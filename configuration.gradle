@@ -1,0 +1,74 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+project.ext {
+
+    cfgProjectGroup = "org.openmuc.jeebus"
+    cfgVersion = "4.0.0"
+
+    // Release settings
+
+    cfgGitLabProjectId = "13833"
+
+    cfgPomName = "jEEBus.SPINE"
+    cfgPomDescription = "jEEBus.SPINE is the Java implementation of the Smart" +
+        " Premises Interoperable Neutral Message Exchange (SPINE)" +
+        " which represents the information layer of the EEBus" +
+        " Communication Standard, containing its data model." +
+        " jEEBus can be used as an SDK to implement EEBus Use Cases."
+    cfgPomProjectUrl = "https://www.openmuc.org/eebus/"
+
+    cfgPomLicenseName = "Eclipse Public License 2.0"
+    cfgPomLicenseUrl = "https://www.eclipse.org/legal/epl-2.0"
+
+    cfgPomScmUrl = "https://www.openmuc.org/eebus/spine/download/"
+
+    cfgJunitVersion = '5.7.2'
+
+    distributionProjects = subprojects.findAll {
+        it.getPath() == ":spine" // || it.getPath() == ":spine-test-utilities"
+    }
+
+    cfgSnapshotPattern = ~/\d+\.\d+\.\d+.*SNAPSHOT.*/
+    if (cfgVersion.matches(cfgSnapshotPattern)) {
+        repositoryProjects = subprojects
+        isReleaseVersion = false
+    } else {
+        repositoryProjects = distributionProjects
+        isReleaseVersion = true
+    }
+}
+
+tasks.withType(Tar) {
+    dependsOn checkLicense
+
+    into(project.name) {
+        from("./") {
+            exclude "**/build/**"
+
+            include "build.gradle"
+            include "configuration.gradle"
+            include "settings.gradle"
+            include "LICENSE"
+            include "CHANGELOG.md"
+            include "gradle/wrapper/**"
+            include "gradlew"
+            include "gradlew.bat"
+            include "projects/**"
+            include ".idea/codeStyles/**"
+        }
+        from('distribute/') {
+            include '*'
+        }
+        from('build/licenses/') {
+            include 'THIRD-PARTY-LICENSES.md'
+        }
+    }
+}

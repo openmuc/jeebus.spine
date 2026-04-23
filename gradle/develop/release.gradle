@@ -1,0 +1,131 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+apply from: "configuration.gradle"
+
+configure(distributionProjects) {
+    def cfgTokenValue
+    def cfgSnapshotRepository
+    def cfgGitLabGroupName
+    def actualPomProjectUrl = "https://www.openmuc.org/"
+
+    if (project.hasProperty('cfgPomProjectUrl')) {
+        actualPomProjectUrl = cfgPomProjectUrl
+    }
+
+    def cfgPomDeveloperId = "openmuc"
+    def cfgPomDeveloperName = "OpenMUC Team"
+
+    if (project.hasProperty('argProjectName')) {
+        cfgGitLabProjectId = project.properties[project.argProjectName + "_projectId"]
+    }
+    cfgSnapshotRepository = "https://gitlab.cc-asp.fraunhofer.de/api/v4/projects/" + cfgGitLabProjectId + "/packages/maven"
+
+    if (project.hasProperty('argGroupName')) {
+        cfgTokenValue = project.properties[argGroupName + "_groupDeployToken"]
+        cfgGitLabGroupName = project.properties[project.argGroupName + "_groupName"]
+        cfgSnapshotRepository = "https://gitlab.cc-asp.fraunhofer.de/api/v4/groups/" + cfgGitLabGroupName + "/-/packages/maven"
+    }
+
+    apply plugin: "com.vanniktech.maven.publish"
+
+    mavenPublishing {
+        coordinates(cfgProjectGroup, project.getName(), cfgVersion)
+        pom {
+            name = cfgPomName
+            description = cfgPomDescription
+            url = actualPomProjectUrl
+
+            developers {
+                developer {
+                    id = cfgPomDeveloperId
+                    name = cfgPomDeveloperName
+                }
+            }
+
+            licenses {
+                license {
+                    name = cfgPomLicenseName
+                    url = cfgPomLicenseUrl
+                    distribution = "repo"
+                }
+            }
+
+            scm {
+                url = cfgPomScmUrl
+                connection = "none"
+            }
+        }
+
+        if (isReleaseVersion && project.hasProperty("signing.keyId")) {
+            publishToMavenCentral(false)
+
+            signAllPublications()
+        }
+    }
+
+    publishing {
+        repositories {
+            // Not a Gitlab CI process ...
+            if (!System.getenv("CI")) {
+                if (!isReleaseVersion) {
+                    maven {
+                        url = cfgSnapshotRepository
+                        name = "GitLab"
+                        authentication {
+                            header(HttpHeaderAuthentication)
+                        }
+                        credentials(HttpHeaderCredentials) {
+                            if ((project.hasProperty('argProjectName')
+                                || project.hasProperty('argGroupName'))
+                            ) {
+                                name = 'Deploy-Token'
+                                value = cfgTokenValue
+                            }
+                            else if (project.hasProperty("gitLabPrivateToken")) {
+                                name = 'Private-Token'
+                                value = gitLabPrivateToken
+                            } else {
+                                logger.warn("Warning in project " + project.name
+                                    + ": It is not a CI environment nor a Private-Token " +
+                                    "(gitLabPrivateToken=<PRIVATE_TOKEN>) in your gradle.properties."
+                                )
+                                return 0
+                            }
+                        }
+                    }
+                }
+            }
+            // Runs in a GitLab CI, set Job Token and publish to GitLab registry
+            else {
+                maven {
+                    url = System.getenv("CI_API_V4_URL") + "/projects/" + cfgGitLabProjectId + "/packages/maven"
+                    name = "GitLab"
+                    credentials(HttpHeaderCredentials) {
+                        name = 'Job-Token'
+                        value = System.getenv("CI_JOB_TOKEN")
+                    }
+                    authentication {
+                        header(HttpHeaderAuthentication)
+                    }
+                }
+            }
+        }
+    }
+}
+
+task tarFull(type: Tar) {
+    archiveBaseName = project.getName()
+    archiveVersion = cfgVersion
+    destinationDirectory = file("$buildDir/distributions")
+
+    compression = Compression.GZIP
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

@@ -1,0 +1,572 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+package org.openmuc.jeebus.spine.xsd.v1;
+
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlSchemaType;
+import jakarta.xml.bind.annotation.XmlSeeAlso;
+import jakarta.xml.bind.annotation.XmlType;
+import org.jvnet.jaxb.lang.CopyStrategy;
+import org.jvnet.jaxb.lang.CopyTo;
+import org.jvnet.jaxb.lang.JAXBCopyStrategy;
+import org.jvnet.jaxb.lang.ToString;
+import org.jvnet.jaxb.lang.ToStringStrategy;
+import org.jvnet.jaxb.locator.ObjectLocator;
+import org.jvnet.jaxb.locator.util.LocatorUtils;
+import org.openmuc.jeebus.spine.impl.parser.CustomToStringStrategy;
+
+
+/**
+ * <p>Java class for OperatingConstraintsInterruptDataType complex type.
+ * 
+ * <p>The following schema fragment specifies the expected content contained within this class.
+ * 
+ * <pre>
+ * &lt;complexType name="OperatingConstraintsInterruptDataType"&gt;
+ *   &lt;complexContent&gt;
+ *     &lt;restriction base="{http://www.w3.org/2001/XMLSchema}anyType"&gt;
+ *       &lt;sequence&gt;
+ *         &lt;element name="sequenceId" type="{http://docs.eebus.org/spine/xsd/v1}PowerSequenceIdType" minOccurs="0"/&gt;
+ *         &lt;element name="isPausable" type="{http://www.w3.org/2001/XMLSchema}boolean" minOccurs="0"/&gt;
+ *         &lt;element name="isStoppable" type="{http://www.w3.org/2001/XMLSchema}boolean" minOccurs="0"/&gt;
+ *         &lt;element name="notInterruptibleAtHighPower" type="{http://www.w3.org/2001/XMLSchema}boolean" minOccurs="0"/&gt;
+ *         &lt;element name="maxCyclesPerDay" type="{http://www.w3.org/2001/XMLSchema}unsignedInt" minOccurs="0"/&gt;
+ *       &lt;/sequence&gt;
+ *     &lt;/restriction&gt;
+ *   &lt;/complexContent&gt;
+ * &lt;/complexType&gt;
+ * </pre>
+ * 
+ * 
+ */
+@XmlAccessorType(XmlAccessType.FIELD)
+@XmlType(name = "OperatingConstraintsInterruptDataType", propOrder = {
+    "sequenceId",
+    "isPausable",
+    "isStoppable",
+    "notInterruptibleAtHighPower",
+    "maxCyclesPerDay"
+})
+@XmlSeeAlso({
+    org.openmuc.jeebus.spine.xsd.v1.SmartEnergyManagementPsPowerSequenceType.OperatingConstraintsInterrupt.class
+})
+public class OperatingConstraintsInterruptDataType implements Cloneable, CopyTo, ToString
+{
+
+    @XmlSchemaType(name = "unsignedInt")
+    protected Long sequenceId;
+    protected Boolean isPausable;
+    protected Boolean isStoppable;
+    protected Boolean notInterruptibleAtHighPower;
+    @XmlSchemaType(name = "unsignedInt")
+    protected Long maxCyclesPerDay;
+
+    /**
+     * Default no-arg constructor
+     * 
+     */
+    public OperatingConstraintsInterruptDataType() {
+        super();
+    }
+
+    /**
+     * Fully-initialising value constructor
+     * 
+     */
+    public OperatingConstraintsInterruptDataType(final Long sequenceId, final Boolean isPausable, final Boolean isStoppable, final Boolean notInterruptibleAtHighPower, final Long maxCyclesPerDay) {
+        this.sequenceId = sequenceId;
+        this.isPausable = isPausable;
+        this.isStoppable = isStoppable;
+        this.notInterruptibleAtHighPower = notInterruptibleAtHighPower;
+        this.maxCyclesPerDay = maxCyclesPerDay;
+    }
+
+    /**
+     * Gets the value of the sequenceId property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Long }
+     *     
+     */
+    public Long getSequenceId() {
+        return sequenceId;
+    }
+
+    /**
+     * Sets the value of the sequenceId property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Long }
+     *     
+     */
+    public void setSequenceId(Long value) {
+        this.sequenceId = value;
+    }
+
+    /**
+     * Gets the value of the isPausable property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Boolean }
+     *     
+     */
+    public Boolean getIsPausable() {
+        return isPausable;
+    }
+
+    /**
+     * Sets the value of the isPausable property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     *     
+     */
+    public void setIsPausable(Boolean value) {
+        this.isPausable = value;
+    }
+
+    /**
+     * Gets the value of the isStoppable property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Boolean }
+     *     
+     */
+    public Boolean getIsStoppable() {
+        return isStoppable;
+    }
+
+    /**
+     * Sets the value of the isStoppable property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     *     
+     */
+    public void setIsStoppable(Boolean value) {
+        this.isStoppable = value;
+    }
+
+    /**
+     * Gets the value of the notInterruptibleAtHighPower property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Boolean }
+     *     
+     */
+    public Boolean getNotInterruptibleAtHighPower() {
+        return notInterruptibleAtHighPower;
+    }
+
+    /**
+     * Sets the value of the notInterruptibleAtHighPower property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     *     
+     */
+    public void setNotInterruptibleAtHighPower(Boolean value) {
+        this.notInterruptibleAtHighPower = value;
+    }
+
+    /**
+     * Gets the value of the maxCyclesPerDay property.
+     * 
+     * @return
+     *     possible object is
+     *     {@link Long }
+     *     
+     */
+    public Long getMaxCyclesPerDay() {
+        return maxCyclesPerDay;
+    }
+
+    /**
+     * Sets the value of the maxCyclesPerDay property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Long }
+     *     
+     */
+    public void setMaxCyclesPerDay(Long value) {
+        this.maxCyclesPerDay = value;
+    }
+
+    /**
+     * Sets the value of the sequenceId property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Long }
+     * @return
+     *     The class instance
+     */
+    public OperatingConstraintsInterruptDataType withSequenceId(Long value) {
+        setSequenceId(value);
+        return this;
+    }
+
+    /**
+     * Sets the value of the isPausable property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     * @return
+     *     The class instance
+     */
+    public OperatingConstraintsInterruptDataType withIsPausable(Boolean value) {
+        setIsPausable(value);
+        return this;
+    }
+
+    /**
+     * Sets the value of the isStoppable property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     * @return
+     *     The class instance
+     */
+    public OperatingConstraintsInterruptDataType withIsStoppable(Boolean value) {
+        setIsStoppable(value);
+        return this;
+    }
+
+    /**
+     * Sets the value of the notInterruptibleAtHighPower property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Boolean }
+     * @return
+     *     The class instance
+     */
+    public OperatingConstraintsInterruptDataType withNotInterruptibleAtHighPower(Boolean value) {
+        setNotInterruptibleAtHighPower(value);
+        return this;
+    }
+
+    /**
+     * Sets the value of the maxCyclesPerDay property.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link Long }
+     * @return
+     *     The class instance
+     */
+    public OperatingConstraintsInterruptDataType withMaxCyclesPerDay(Long value) {
+        setMaxCyclesPerDay(value);
+        return this;
+    }
+
+    @Override
+    public Object clone() {
+        return copyTo(createNewInstance());
+    }
+
+    @Override
+    public Object copyTo(Object target) {
+        final CopyStrategy strategy = JAXBCopyStrategy.getInstance();
+        return copyTo(null, target, strategy);
+    }
+
+    @Override
+    public Object copyTo(ObjectLocator locator, Object target, CopyStrategy strategy) {
+        final Object draftCopy = ((target == null)?createNewInstance():target);
+        if (draftCopy instanceof OperatingConstraintsInterruptDataType) {
+            final OperatingConstraintsInterruptDataType copy = ((OperatingConstraintsInterruptDataType) draftCopy);
+            {
+                Boolean sequenceIdShouldBeCopiedAndSet = strategy.shouldBeCopiedAndSet(locator, (this.sequenceId!= null));
+                if (sequenceIdShouldBeCopiedAndSet == Boolean.TRUE) {
+                    Long sourceSequenceId;
+                    sourceSequenceId = this.getSequenceId();
+                    Long copySequenceId = ((Long) strategy.copy(LocatorUtils.property(locator, "sequenceId", sourceSequenceId), sourceSequenceId, (this.sequenceId!= null)));
+                    copy.setSequenceId(copySequenceId);
+                } else {
+                    if (sequenceIdShouldBeCopiedAndSet == Boolean.FALSE) {
+                        copy.sequenceId = null;
+                    }
+                }
+            }
+            {
+                Boolean isPausableShouldBeCopiedAndSet = strategy.shouldBeCopiedAndSet(locator, (this.isPausable!= null));
+                if (isPausableShouldBeCopiedAndSet == Boolean.TRUE) {
+                    Boolean sourceIsPausable;
+                    sourceIsPausable = this.getIsPausable();
+                    Boolean copyIsPausable = ((Boolean) strategy.copy(LocatorUtils.property(locator, "isPausable", sourceIsPausable), sourceIsPausable, (this.isPausable!= null)));
+                    copy.setIsPausable(copyIsPausable);
+                } else {
+                    if (isPausableShouldBeCopiedAndSet == Boolean.FALSE) {
+                        copy.isPausable = null;
+                    }
+                }
+            }
+            {
+                Boolean isStoppableShouldBeCopiedAndSet = strategy.shouldBeCopiedAndSet(locator, (this.isStoppable!= null));
+                if (isStoppableShouldBeCopiedAndSet == Boolean.TRUE) {
+                    Boolean sourceIsStoppable;
+                    sourceIsStoppable = this.getIsStoppable();
+                    Boolean copyIsStoppable = ((Boolean) strategy.copy(LocatorUtils.property(locator, "isStoppable", sourceIsStoppable), sourceIsStoppable, (this.isStoppable!= null)));
+                    copy.setIsStoppable(copyIsStoppable);
+                } else {
+                    if (isStoppableShouldBeCopiedAndSet == Boolean.FALSE) {
+                        copy.isStoppable = null;
+                    }
+                }
+            }
+            {
+                Boolean notInterruptibleAtHighPowerShouldBeCopiedAndSet = strategy.shouldBeCopiedAndSet(locator, (this.notInterruptibleAtHighPower!= null));
+                if (notInterruptibleAtHighPowerShouldBeCopiedAndSet == Boolean.TRUE) {
+                    Boolean sourceNotInterruptibleAtHighPower;
+                    sourceNotInterruptibleAtHighPower = this.getNotInterruptibleAtHighPower();
+                    Boolean copyNotInterruptibleAtHighPower = ((Boolean) strategy.copy(LocatorUtils.property(locator, "notInterruptibleAtHighPower", sourceNotInterruptibleAtHighPower), sourceNotInterruptibleAtHighPower, (this.notInterruptibleAtHighPower!= null)));
+                    copy.setNotInterruptibleAtHighPower(copyNotInterruptibleAtHighPower);
+                } else {
+                    if (notInterruptibleAtHighPowerShouldBeCopiedAndSet == Boolean.FALSE) {
+                        copy.notInterruptibleAtHighPower = null;
+                    }
+                }
+            }
+            {
+                Boolean maxCyclesPerDayShouldBeCopiedAndSet = strategy.shouldBeCopiedAndSet(locator, (this.maxCyclesPerDay!= null));
+                if (maxCyclesPerDayShouldBeCopiedAndSet == Boolean.TRUE) {
+                    Long sourceMaxCyclesPerDay;
+                    sourceMaxCyclesPerDay = this.getMaxCyclesPerDay();
+                    Long copyMaxCyclesPerDay = ((Long) strategy.copy(LocatorUtils.property(locator, "maxCyclesPerDay", sourceMaxCyclesPerDay), sourceMaxCyclesPerDay, (this.maxCyclesPerDay!= null)));
+                    copy.setMaxCyclesPerDay(copyMaxCyclesPerDay);
+                } else {
+                    if (maxCyclesPerDayShouldBeCopiedAndSet == Boolean.FALSE) {
+                        copy.maxCyclesPerDay = null;
+                    }
+                }
+            }
+        }
+        return draftCopy;
+    }
+
+    @Override
+    public Object createNewInstance() {
+        return new OperatingConstraintsInterruptDataType();
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if ((object == null)||(this.getClass()!= object.getClass())) {
+            return false;
+        }
+        if (this == object) {
+            return true;
+        }
+        final OperatingConstraintsInterruptDataType that = ((OperatingConstraintsInterruptDataType) object);
+        {
+            Long leftSequenceId;
+            leftSequenceId = this.getSequenceId();
+            Long rightSequenceId;
+            rightSequenceId = that.getSequenceId();
+            if (this.sequenceId!= null) {
+                if (that.sequenceId!= null) {
+                    if (!leftSequenceId.equals(rightSequenceId)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                if (that.sequenceId!= null) {
+                    return false;
+                }
+            }
+        }
+        {
+            Boolean leftIsPausable;
+            leftIsPausable = this.getIsPausable();
+            Boolean rightIsPausable;
+            rightIsPausable = that.getIsPausable();
+            if (this.isPausable!= null) {
+                if (that.isPausable!= null) {
+                    if (!leftIsPausable.equals(rightIsPausable)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                if (that.isPausable!= null) {
+                    return false;
+                }
+            }
+        }
+        {
+            Boolean leftIsStoppable;
+            leftIsStoppable = this.getIsStoppable();
+            Boolean rightIsStoppable;
+            rightIsStoppable = that.getIsStoppable();
+            if (this.isStoppable!= null) {
+                if (that.isStoppable!= null) {
+                    if (!leftIsStoppable.equals(rightIsStoppable)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                if (that.isStoppable!= null) {
+                    return false;
+                }
+            }
+        }
+        {
+            Boolean leftNotInterruptibleAtHighPower;
+            leftNotInterruptibleAtHighPower = this.getNotInterruptibleAtHighPower();
+            Boolean rightNotInterruptibleAtHighPower;
+            rightNotInterruptibleAtHighPower = that.getNotInterruptibleAtHighPower();
+            if (this.notInterruptibleAtHighPower!= null) {
+                if (that.notInterruptibleAtHighPower!= null) {
+                    if (!leftNotInterruptibleAtHighPower.equals(rightNotInterruptibleAtHighPower)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                if (that.notInterruptibleAtHighPower!= null) {
+                    return false;
+                }
+            }
+        }
+        {
+            Long leftMaxCyclesPerDay;
+            leftMaxCyclesPerDay = this.getMaxCyclesPerDay();
+            Long rightMaxCyclesPerDay;
+            rightMaxCyclesPerDay = that.getMaxCyclesPerDay();
+            if (this.maxCyclesPerDay!= null) {
+                if (that.maxCyclesPerDay!= null) {
+                    if (!leftMaxCyclesPerDay.equals(rightMaxCyclesPerDay)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                if (that.maxCyclesPerDay!= null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int currentHashCode = 1;
+        {
+            currentHashCode = (currentHashCode* 31);
+            Long theSequenceId;
+            theSequenceId = this.getSequenceId();
+            if (this.sequenceId!= null) {
+                currentHashCode += theSequenceId.hashCode();
+            }
+        }
+        {
+            currentHashCode = (currentHashCode* 31);
+            Boolean theIsPausable;
+            theIsPausable = this.getIsPausable();
+            if (this.isPausable!= null) {
+                currentHashCode += theIsPausable.hashCode();
+            }
+        }
+        {
+            currentHashCode = (currentHashCode* 31);
+            Boolean theIsStoppable;
+            theIsStoppable = this.getIsStoppable();
+            if (this.isStoppable!= null) {
+                currentHashCode += theIsStoppable.hashCode();
+            }
+        }
+        {
+            currentHashCode = (currentHashCode* 31);
+            Boolean theNotInterruptibleAtHighPower;
+            theNotInterruptibleAtHighPower = this.getNotInterruptibleAtHighPower();
+            if (this.notInterruptibleAtHighPower!= null) {
+                currentHashCode += theNotInterruptibleAtHighPower.hashCode();
+            }
+        }
+        {
+            currentHashCode = (currentHashCode* 31);
+            Long theMaxCyclesPerDay;
+            theMaxCyclesPerDay = this.getMaxCyclesPerDay();
+            if (this.maxCyclesPerDay!= null) {
+                currentHashCode += theMaxCyclesPerDay.hashCode();
+            }
+        }
+        return currentHashCode;
+    }
+
+    @Override
+    public String toString() {
+        final ToStringStrategy strategy = new CustomToStringStrategy();
+        final StringBuilder buffer = new StringBuilder();
+        append(null, buffer, strategy);
+        return buffer.toString();
+    }
+
+    @Override
+    public StringBuilder append(ObjectLocator locator, StringBuilder buffer, ToStringStrategy strategy) {
+        strategy.appendStart(locator, this, buffer);
+        appendFields(locator, buffer, strategy);
+        strategy.appendEnd(locator, this, buffer);
+        return buffer;
+    }
+
+    @Override
+    public StringBuilder appendFields(ObjectLocator locator, StringBuilder buffer, ToStringStrategy strategy) {
+        {
+            Long theSequenceId;
+            theSequenceId = this.getSequenceId();
+            strategy.appendField(locator, this, "sequenceId", buffer, theSequenceId, (this.sequenceId!= null));
+        }
+        {
+            Boolean theIsPausable;
+            theIsPausable = this.getIsPausable();
+            strategy.appendField(locator, this, "isPausable", buffer, theIsPausable, (this.isPausable!= null));
+        }
+        {
+            Boolean theIsStoppable;
+            theIsStoppable = this.getIsStoppable();
+            strategy.appendField(locator, this, "isStoppable", buffer, theIsStoppable, (this.isStoppable!= null));
+        }
+        {
+            Boolean theNotInterruptibleAtHighPower;
+            theNotInterruptibleAtHighPower = this.getNotInterruptibleAtHighPower();
+            strategy.appendField(locator, this, "notInterruptibleAtHighPower", buffer, theNotInterruptibleAtHighPower, (this.notInterruptibleAtHighPower!= null));
+        }
+        {
+            Long theMaxCyclesPerDay;
+            theMaxCyclesPerDay = this.getMaxCyclesPerDay();
+            strategy.appendField(locator, this, "maxCyclesPerDay", buffer, theMaxCyclesPerDay, (this.maxCyclesPerDay!= null));
+        }
+        return buffer;
+    }
+
+}

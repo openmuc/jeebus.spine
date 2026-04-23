@@ -1,0 +1,77 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+plugins {
+    // https://github.com/bjornvester/xjc-gradle-plugin
+    id("com.github.bjornvester.xjc") version "1.8.1"
+}
+
+dependencies {
+    xjcPlugins("org.jvnet.jaxb:jaxb-plugins:4.0.6")
+
+    testImplementation project(':spine-test-utilities')
+}
+
+xjc {
+    useJakarta = true
+    addCompilationDependencies = false
+
+    /* These options add extremely useful code to the generated classes.
+     * For Reference: https://github.com/highsource/jaxb-tools/wiki/JAXB2-Basic */
+    options.add("-Xfluent-api")
+    options.add("-Xcopyable")
+    options.add("-XsimpleEquals")
+    options.add("-XsimpleHashCode")
+    options.add("-Xvalue-constructor")
+    // This is necessary for fixing the dataSelectorsChoiceGroup
+    options.add("-Xsimplify")
+
+    options.add("-XtoString")
+    // This makes toString methods use simple instead of canonical class names
+    options.add("-XtoString-toStringStrategyClass=org.openmuc.jeebus.spine.impl.parser.CustomToStringStrategy")
+
+    // This prefixes Boolean getters with "get" instead of "is". See issue #28.
+    options.add("-Xboolean-getter")
+
+    outputJavaDir.set(new File("$projectDir/src/main/java-generated"))
+    defaultPackage = 'org.openmuc.jeebus.spine.xsd.v1'
+}
+
+tasks.named('xjc').configure {
+    // Set to true to enable code generation
+    enabled = false
+    /*
+       Also, if you want to regenerate java classes from the official EEBus SPINE XSD
+       files, you first need to download them and extract the XSDs subfolder at
+       projects/spine/src/main/resources
+       link: https://www.eebus.org/specifications/download-specifications/
+     */
+}
+
+sourceSets {
+    main {
+        java.srcDirs += new File("$projectDir/src/main/java-generated")
+    }
+}
+
+jar {
+    bnd(
+        'Import-Package': '*',
+        'Export-Package': 'org.openmuc.jeebus.spine.*,org.openmuc.jeebus.shipspine.*',
+    )
+}
+
+tasks.withType(Jar).configureEach {
+    // Exclude all resources from the jar
+    processResources.exclude('*')
+    exclude "*.xsd", "*.xjb", "*.xpr"
+}
+
+apply plugin: 'ca.cutterslade.analyze'

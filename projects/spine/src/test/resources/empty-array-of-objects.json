@@ -1,0 +1,21 @@
+{
+  "datagram": [
+    {
+      "payload": [
+        {
+          "cmd": [
+            [
+              {"function": "measurementDescriptionListData"},
+              {"filter": [[{"cmdControl": [{"partial": []}]}]]},
+              {
+                "measurementDescriptionListData": [
+                  {"measurementDescriptionData": []}
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

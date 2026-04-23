@@ -1,0 +1,32 @@
+{
+  "datagram": [
+    {
+      "payload": [
+        {
+          "cmd": [
+            [
+              {"function": "deviceConfigurationKeyValueDescriptionListData"},
+              {
+                "filter": [
+                  [
+                    {"cmdControl": [{"partial": []}]},
+                    {
+                      "deviceConfigurationKeyValueDescriptionListDataSelectors": [
+                        {"keyName": "failsafeConsumptionActivePowerLimit"}
+                      ]
+                    },
+                    {
+                      "deviceConfigurationKeyValueDescriptionListDataSelectors": [
+                        {"keyName": "failsafeDurationMinimum"}
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

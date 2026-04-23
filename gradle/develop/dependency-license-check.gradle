@@ -1,0 +1,87 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+// We have to copy the classpath from the root project, because the plugin dependency is declared there.
+buildscript {
+    dependencies {
+        classpath files(rootProject.buildscript.configurations.classpath)
+    }
+}
+
+import com.github.jk1.license.filter.SpdxLicenseBundleNormalizer
+import com.github.jk1.license.importer.XmlReportImporter
+import com.github.jk1.license.render.CsvReportRenderer
+import com.github.jk1.license.render.InventoryHtmlReportRenderer
+import com.github.jk1.license.render.InventoryMarkdownReportRenderer
+
+licenseReport {
+    renderers = [
+        new InventoryHtmlReportRenderer(),
+        new InventoryMarkdownReportRenderer(
+            "THIRD-PARTY-LICENSES.md",
+            """Third Party Licenses
+jEEBus.SPINE requires third party software to function properly.
+That third party software may be distributed under licenses different
+than the license of this project. This file declares these dependencies
+as well as their licenses."""),
+        new CsvReportRenderer(separator: ";", filename: "spine-licenses.csv")
+    ]
+
+    // Make use of SPDX-Identifiers so we don't have to deal with different strings for the same license.
+    // See https://github.com/jk1/Gradle-License-Report?tab=readme-ov-file#spdx-support
+    filters = [new SpdxLicenseBundleNormalizer()]
+
+    // Set output directory for the report data.
+    // Defaults to ${project.buildDir}/reports/dependency-license.
+    outputDir = "$projectDir/build/licenses"
+
+    // Select projects to examine for dependencies.
+    // Defaults to current project and all its subprojects.
+    //
+    // Let's not consider the test-utilities subproject for as long
+    // as we only use it for internal testing.
+    projects = [project(":spine")]
+
+    // Adjust the configurations to fetch dependencies. Default is 'runtimeClasspath'
+    // For Android projects use 'releaseRuntimeClasspath' or 'yourFlavorNameReleaseRuntimeClasspath'
+    // Use 'ALL' to dynamically resolve all configurations:
+    // configurations = ALL
+    configurations = ['runtimeClasspath']
+
+    // List the groups ids to exclude from dependency report. Supports regular expressions.
+    // For finer granularity, see: excludes.
+    excludeGroups = []
+
+    // Don't include artifacts of project's own group into the report
+    excludeOwnGroup = true
+
+    // Exclude bom dependencies.
+    // If set to true, then all boms will be excluded from the report.
+    //
+    // Bills of Material (BOMs) are used to manage versioning of related dependency
+    // components (i.e. junit-jupiter-api (compile dependency)
+    // vs junit-jupiter-engine (runtime dependency)).
+    // This is the pull request that implemented this feature:
+    //    https://github.com/jk1/Gradle-License-Report/pull/208
+    // It says that excluding BOMs is fine, as they have the same licenses as the
+    // dependencies they manage which are still checked.
+    excludeBoms = true
+
+    // Set importers to import any external dependency information, i.e. from npm.
+    // Custom importer should implement DependencyDataImporter interface.
+    importers = [new XmlReportImporter(
+        'External Dependencies',
+        new File("$projectDir/gradle/develop/dependency-license-check-external.xml")
+    )]
+
+    // This is for the allowed-licenses-file in checkLicense Task
+    // Accepts File, URL or String path to local or remote file
+    allowedLicensesFile = new File("$projectDir/gradle/develop/dependency-license-check-whitelist.json")
+}

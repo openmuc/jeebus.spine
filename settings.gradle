@@ -1,0 +1,28 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+/*
+ * The settings file is used to specify which projects to include in your build.
+ *
+ * Detailed information about configuring a multi-project build in Gradle can be found
+ * in the user manual at https://docs.gradle.org/7.6/userguide/multi_project_builds.html
+ */
+
+rootProject.name = 'spine-root'
+
+include 'spine'
+project(':spine').projectDir = new File(settingsDir, 'projects/spine')
+
+include 'spine-test-utilities'
+project(':spine-test-utilities').projectDir = new File(settingsDir, 'projects/spine-test-utilities')
+
+include 'demo'
+project(':demo').projectDir = new File(settingsDir, 'projects/demo')
+

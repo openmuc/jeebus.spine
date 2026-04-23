@@ -1,0 +1,182 @@
+/********************************************************************************
+ * Copyright (c) 2026 Fraunhofer ISE
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0.
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ ********************************************************************************/
+
+buildscript {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'idea'
+    id 'java-library'
+    // https://github.com/bndtools/bnd
+    id 'biz.aQute.bnd.builder' version '6.4.0'
+    // https://github.com/gradle-dependency-analyze/gradle-dependency-analyze
+    id "ca.cutterslade.analyze" version "1.10.0"
+    // https://github.com/jk1/Gradle-License-Report
+    id 'com.github.jk1.dependency-license-report' version '2.9'
+    // https://github.com/vanniktech/gradle-maven-publish-plugin
+    id "com.vanniktech.maven.publish" version "0.34.0"
+}
+
+jar.enabled = false
+
+def internalFolder = new File("$projectDir/gradle/develop/")
+
+if (internalFolder.exists()) {
+    internalFolder.eachFile { file ->
+        if (file.name.endsWith('.gradle')) {
+            apply from: file.path
+        }
+    }
+}
+
+project.ext.set("GlobalDestinationDir", new File("$rootDir/build/"))
+project.ext.set("internalFolder", new File("$rootDir/gradle/develop/"))
+
+apply from: "configuration.gradle"
+
+apply plugin: 'ca.cutterslade.analyze'
+
+apply plugin: 'idea'
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+tasks.named('analyzeTestClassesDependencies').configure {
+    warnUsedUndeclared = false
+    logDependencyInformationToFiles = true
+}
+
+subprojects {
+    apply plugin: 'biz.aQute.bnd.builder'
+
+    group cfgProjectGroup
+    version cfgVersion
+    sourceCompatibility = 1.11
+    targetCompatibility = 1.11
+
+    def tokenName = 'Private-Token'
+    def tokenValue = ''
+    if (project.hasProperty("gitLabPrivateToken")) {
+        tokenValue = gitLabPrivateToken
+    }
+    if (System.getenv("CI")) {
+        tokenName = 'Job-Token'
+        tokenValue = System.getenv("CI_JOB_TOKEN")
+    }
+
+    repositories {
+        // local dependencies as jars in the folder ./dependencies/
+        flatDir {
+            dirs rootDir.path + '/dependencies'
+        }
+        // central maven repository
+        mavenCentral()
+        // eebus group repository
+        maven {
+            url "https://gitlab.cc-asp.fraunhofer.de/api/v4/groups/18477/-/packages/maven"
+            credentials(HttpHeaderCredentials) {
+                name = tokenName
+                value = tokenValue
+            }
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+        }
+    }
+
+    dependencies {
+        // https://central.sonatype.com/artifact/org.openmuc.jeebus/ship
+        implementation 'org.openmuc.jeebus:ship:2.2.0'
+        // implementation name: 'ship-2.2.0-SNAPSHOT'
+
+        // https://mvnrepository.com/artifact/com.fasterxml.jackson/jackson-bom
+        implementation platform("com.fasterxml.jackson:jackson-bom:2.21.0")
+        // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
+        implementation "com.fasterxml.jackson.core:jackson-databind"
+        // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
+        implementation "com.fasterxml.jackson.core:jackson-annotations"
+        // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
+        implementation "com.fasterxml.jackson.core:jackson-core"
+
+        // https://mvnrepository.com/artifact/com.fasterxml.jackson.module/jackson-module-jakarta-xmlbind-annotations
+        implementation "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations"
+
+        // https://mvnrepository.com/artifact/jakarta.xml.bind/jakarta.xml.bind-api
+        implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.5'
+
+        // https://mvnrepository.com/artifact/org.jvnet.jaxb/jaxb-plugins-runtime
+        implementation 'org.jvnet.jaxb:jaxb-plugins-runtime:4.0.12'
+
+        // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+        implementation 'org.slf4j:slf4j-api:2.0.17'
+
+        // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
+        testImplementation "org.junit.jupiter:junit-jupiter-api:$cfgJunitVersion"
+        // https://mvnrepository.com/artifact/org.jmock/jmock
+        testImplementation 'org.jmock:jmock:2.13.1'
+        // https://mvnrepository.com/artifact/org.hamcrest/hamcrest
+        testImplementation 'org.hamcrest:hamcrest:3.0'
+        // https://mvnrepository.com/artifact/org.awaitility/awaitility
+        testImplementation 'org.awaitility:awaitility:4.2.2'
+        // For exception testing
+        // https://mvnrepository.com/artifact/net.obvj/junit-utils
+        testImplementation 'net.obvj:junit-utils:1.8.0'
+
+        // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine
+        testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$cfgJunitVersion"
+        // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+        testRuntimeOnly 'ch.qos.logback:logback-classic:1.5.16'
+
+    }
+
+    jar {
+        onlyIf { project.name != rootProject.name }
+        bnd(
+            'Bundle-Name': project.name,
+            'Bundle-Vendor': 'Fraunhofer ISE',
+            'Bundle-SymbolicName': project.group + '.' + project.name,
+        )
+    }
+
+    tasks.withType(Jar).configureEach {
+        destinationDirectory = GlobalDestinationDir
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
+    // Removes the warning about the multiple SLF4J implementations:
+    //    SLF4J: Class path contains multiple SLF4J bindings.
+    configurations.configureEach {
+        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j-impl'
+    }
+
+    test {
+        // this stops gradle from skipping up-to-date test tasks
+        outputs.upToDateWhen { false }
+
+        useJUnitPlatform()
+        testLogging.showStandardStreams = true
+    }
+
+    javadoc {
+        options.addBooleanOption "-no-module-directories", true
+        source = sourceSets.main.allJava
+        exclude "**/xsd/**", "**/usecase/**", "**/shipspine/**"
+        options.setLocale('en-US')
+        options.tags 'implSpec:a:Implementation-Requirements'
+    }
+}

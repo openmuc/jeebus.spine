@@ -1,0 +1,46 @@
+{
+  "datagram": [
+    {
+      "payload": [
+        {
+          "cmd": [
+            [
+              {"function": "loadControlLimitListData"},
+              {
+                "filter": [
+                  [
+                    {"cmdControl": [{"delete": []}]},
+                    {
+                      "loadControlLimitListDataSelectors": [
+                        {"limitId": 0}
+                      ]
+                    },
+                    {
+                      "loadControlLimitDataElements": [
+                        {"timePeriod": [{"endTime": []}]}
+                      ]
+                    }
+                  ],
+                  [{"cmdControl": [{"partial": []}]}]
+                ]
+              },
+              {
+                "loadControlLimitListData": [
+                  {
+                    "loadControlLimitData": [
+                      [
+                        {"limitId": 0},
+                        {"isLimitActive": true},
+                        {"value": [{"number": 5}, {"scale": 3}]}
+                      ]
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

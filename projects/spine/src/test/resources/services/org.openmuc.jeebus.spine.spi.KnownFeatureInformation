@@ -1,0 +1,5 @@
+org.openmuc.jeebus.spine.utils.deviceconfiguration.org.openmuc.jeebus.spine.utils.features.DeviceConfigurationInformation
+org.openmuc.jeebus.spine.utils.devicediagnosis.org.openmuc.jeebus.spine.utils.features.DeviceDiagnosisInformation
+org.openmuc.jeebus.spine.utils.electricalconnection.org.openmuc.jeebus.spine.utils.features.ElectricalConnectionInformation
+org.openmuc.jeebus.spine.utils.loadcontrol.org.openmuc.jeebus.spine.utils.features.LoadControlInformation
+org.openmuc.jeebus.spine.utils.measurement.org.openmuc.jeebus.spine.utils.features.MeasurementInformation

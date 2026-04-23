@@ -1,0 +1,116 @@
+image: eclipse-temurin:11-jdk-focal
+
+variables:
+  GIT_DEPTH: 0
+  GRADLE_USER_HOME: ${CI_PROJECT_DIR}/.gradle
+
+stages:
+  - checkLicense
+  - build
+  - test
+  - javadoc
+  - pages
+  - publish
+
+cache:
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+    - build
+
+default:
+  tags:
+    - $JEEBUS_RUNNER_TAG
+
+checkLicense:
+  stage: checkLicense
+  artifacts:
+    expose_as: "License Report"
+    paths:
+      - build/licenses/
+  when: always
+  script:
+    - ./gradlew checkLicense
+  retry: 2
+
+build:
+  stage: build
+  script:
+    - ./gradlew clean jar --parallel
+  artifacts:
+    paths:
+      - "**/build/"
+    expire_in: 1 hour
+
+test:
+  stage: test
+  needs:
+    - build
+  script:
+    - ./gradlew test --parallel
+    - sed -n 's/.*package><counter type="INSTRUCTION" missed="\([0-9]\+\)" covered="\([0-9]\+\)".*/\1 \2/p' "projects/spine/build/reports/jacoco/test/jacocoTestReport.xml" | awk '{printf "\nTotal Instruction Coverage = %.2f%%\n\n", ($2/($1+$2))*100}'
+  coverage: '/Total.+ Coverage = ([0-9.]+)%/'
+  artifacts:
+    paths:
+      - projects/spine/build/reports/
+    expose_as: "Test Reports"
+    reports:
+      junit: "**/build/test-results/test/**/TEST-*.xml"
+      coverage_report:
+        coverage_format: jacoco
+        path: projects/spine/build/reports/jacoco/test/jacocoTestReport.xml
+  retry: 2
+
+javadoc:
+  stage: javadoc
+  needs:
+    - build
+  allow_failure: false
+  script:
+    - ./gradlew javadoc --parallel
+  artifacts:
+    expose_as: "JavaDoc"
+    paths:
+      - projects/spine/build/docs/
+
+pages:
+  stage: pages
+  needs:
+    - checkLicense
+    - test
+    - javadoc
+  only:
+    refs:
+      - develop
+  script:
+    - mkdir -p public/licenses/
+    - cp -r build/licenses/* public/licenses/
+    - cp -r projects/spine/build/reports/* public/
+    - cp -r projects/spine/build/docs/* public/
+  artifacts:
+    paths:
+      - public
+
+.publish-template: &publish-template
+  stage: publish
+  needs:
+    - build
+    - test
+  script:
+    - ./gradlew publish --parallel
+  retry: 2
+
+publish:
+  <<: *publish-template
+  only:
+    refs:
+      - main
+      - master
+      - develop
+    changes:
+      - "**/src/main/**/*"
+      - "configuration.gradle"
+
+publish-manually:
+  <<: *publish-template
+  when: manual

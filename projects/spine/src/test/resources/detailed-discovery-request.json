@@ -1,0 +1,21 @@
+{
+  "datagram": [
+    {
+      "header": [
+        {"specificationVersion": "1.3.0"},
+        {
+          "addressSource": [
+            {"device": "d:_i:12345_TestDevice_1"},
+            {"entity": [0]},
+            {"feature": 0}
+          ]
+        },
+        {"addressDestination": [{"entity": [0]}, {"feature": 0}]},
+        {"msgCounter": 1},
+        {"cmdClassifier": "read"},
+        {"ackRequest": true}
+      ]
+    },
+    {"payload": [{"cmd": [[{"nodeManagementDetailedDiscoveryData": []}]]}]}
+  ]
+}

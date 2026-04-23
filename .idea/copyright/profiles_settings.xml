@@ -1,0 +1,13 @@
+<component name="CopyrightManager">
+  <settings default="EPL-2.0">
+    <module2copyright>
+      <element module="Copyrightable" copyright="EPL-2.0" />
+    </module2copyright>
+    <LanguageOptions name="__TEMPLATE__">
+      <option name="separateBefore" value="true" />
+      <option name="separateAfter" value="true" />
+      <option name="lenBefore" value="81" />
+      <option name="lenAfter" value="82" />
+    </LanguageOptions>
+  </settings>
+</component>

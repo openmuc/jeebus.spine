@@ -1,0 +1,26 @@
+{
+  "datagram": [
+    {
+      "payload": [
+        {
+          "unknownField":  false,
+          "unknownFieldArray": [1, 2, 3],
+          "unknownFieldObject": {"foo": 1, "bar": 2}
+        },
+        {
+          "cmd": [
+            [
+              {"function": "measurementDescriptionListData"},
+              {"filter": [[{"cmdControl": [{"partial": []}]}]]},
+              {
+                "measurementDescriptionListData": [
+                  {"measurementDescriptionData": []}
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

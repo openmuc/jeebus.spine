@@ -1,0 +1,96 @@
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~ Copyright (c) 2026 Fraunhofer ISE
+  ~
+  ~ This program and the accompanying materials are made available under the
+  ~ terms of the Eclipse Public License 2.0 which is available at
+  ~ https://www.eclipse.org/legal/epl-2.0.
+  ~
+  ~ SPDX-License-Identifier: EPL-2.0
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<configuration>
+    <property
+        name="patternPrefix"
+        value="%d{HH:mm:ss} %-5level %-40logger{40} -"
+    />
+
+    <appender name="STDOUT_TRACE" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>TRACE</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${patternPrefix} %white(%msg%n)</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="STDOUT_DEBUG" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${patternPrefix} %white(%msg%n)</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="STDOUT_INFO" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${patternPrefix} %cyan(%msg%n)</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="STDOUT_WARN" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${patternPrefix} %yellow(%msg%n)</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="STDOUT_ERROR" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${patternPrefix} %red(%msg%n)</pattern>
+        </encoder>
+    </appender>
+
+    <root level="all">
+        <appender-ref ref="STDOUT_TRACE"/>
+        <appender-ref ref="STDOUT_DEBUG"/>
+        <appender-ref ref="STDOUT_INFO"/>
+        <appender-ref ref="STDOUT_WARN"/>
+        <appender-ref ref="STDOUT_ERROR"/>
+    </root>
+
+    <logger name="ch.qos.logback" level="WARN"/>
+    <logger name="com.fasterxml.jackson" level="WARN"/>
+    <logger name="javax.jmdns" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+
+    <logger name="org.openmuc.jeebus" level="INFO"/>
+    <logger name="org.openmuc.jeebus.ship" level="INFO"/>
+    <logger name="org.openmuc.jeebus.spine" level="INFO"/>
+
+    <!-- EEBUS MESSAGE LOGGING -->
+    <!-- Set to DEBUG to enable logging of all messages transmitted with SHIP -->
+    <logger name="org.openmuc.jeebus.ship.shipconnection" level="INFO"/>
+    <!-- Set to DEBUG to enable short, human-readable logging of SPINE messages -->
+    <logger name="org.openmuc.jeebus.shipspine" level="DEBUG"/>
+    <!-- Set to DEBUG to log discovered SHIP mDNS services -->
+    <logger name="org.openmuc.jeebus.ship.node.service" level="DEBUG"/>
+</configuration>

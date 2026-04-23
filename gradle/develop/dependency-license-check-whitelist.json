@@ -1,0 +1,51 @@
+{
+  "source": [
+    "https://www.gnu.org/licenses/license-list.html",
+    "https://spdx.org/licenses/"
+  ],
+  "allowedLicenses": [
+    {
+      "moduleLicense": "LGPL-2.1-only"
+    },
+    {
+      "moduleLicense": "LGPL-3.0-only"
+    },
+    {
+      "moduleLicense": "LGPL-2.1-or-later WITH LGPL-3.0-linking-exception"
+    },
+    {
+      "moduleLicense": "Apache-2.0"
+    },
+    {
+      "moduleLicense": "MIT"
+    },
+    {
+      "moduleLicense": "MPL-2.0"
+    },
+    {
+      "moduleLicense": "BSD-2-Clause"
+    },
+    {
+      "moduleLicense": "BSD-3-Clause"
+    },
+    {
+      "comment": "This is just BSD-3-Clause.",
+      "moduleLicense": "EDL-1.0"
+    },
+    {
+      "moduleLicense": "Bouncy Castle Licence"
+    },
+    {
+      "moduleLicense": "CC0-1.0"
+    },
+    {
+      "moduleLicense": "CC-BY-4.0"
+    },
+    {
+      "comment": "This is just BSD-2-Clause-Views.",
+      "moduleLicense": "BSD-Style License",
+      "moduleName": "org.jvnet.jaxb:jaxb-plugins-runtime"
+    }
+  ]
+}
+

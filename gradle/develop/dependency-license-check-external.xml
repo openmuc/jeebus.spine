@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright 2024 Fraunhofer ISE
+  ~
+  ~ This file is part of jEEBus.SHIP
+  ~ For more information visit http://www.openmuc.org
+  ~
+  ~ jEEBus.SHIP is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ jEEBus.SHIP is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with jEEBus.SHIP. If not, see http://www.gnu.org/licenses/.
+  -->
+
+<chapter title="External Dependencies" id="Libs">
+    <table>
+        <tr>
+            <td>Project</td>
+            <td>Version</td>
+            <td>License</td>
+        </tr>
+        <tr>
+            <td><a href="https://gradle.org/">Gradle Wrapper:</a></td>
+            <td>ersion `7.6.1` license `Apache-2.0`</td>
+            <td><a href="https://github.com/gradle/gradle#Apache-2.0-1-ov-file">Apache-2.0</a></td>
+        </tr>
+    </table>
+</chapter>

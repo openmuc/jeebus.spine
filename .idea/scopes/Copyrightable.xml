@@ -1,0 +1,3 @@
+<component name="DependencyValidationManager">
+  <scope name="Copyrightable" pattern="(file:resources//*||file:*.java||file:*.gradle&amp;&amp;!src[spine-root]:*..*&amp;&amp;!lib:*..*)&amp;&amp;!file:*keystore*&amp;&amp;!file:*.jks&amp;&amp;!file:*.xsd&amp;&amp;!file:*.xpr" />
+</component>

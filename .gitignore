@@ -1,0 +1,31 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+.vs
+
+# Official SPINE XSD files
+projects/spine/src/main/resources/*.xsd
+projects/spine/src/main/resources/*.xpr
+
+# Ignore intelliJ project files
+.idea/*
+# Exclusions
+!.idea/codeStyles/
+!.idea/copyright/
+!.idea/inspectionProfiles/
+!.idea/scopes/
+!.idea/icon.svg
+!.idea/.name
+
+# Ignore eclipse-specific files
+.classpath
+.project
+# Ignore Gradle build output directory
+build
+
+# Ignore local dependencies
+dependencies/
+*.bkp
+*.dtmp
+
+# KDE folder settings
+.directory
