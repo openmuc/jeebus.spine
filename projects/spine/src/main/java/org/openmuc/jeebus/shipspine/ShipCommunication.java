@@ -174,6 +174,14 @@ public class ShipCommunication extends Communication {
     }
 
     /**
+     * Returns the hex string that represents the SKI value of the local ship node
+     * @return Hex string representing SKI value
+     */
+    public String getOwnSki() {
+        return ship.getOwnSki();
+    }
+
+    /**
      * @param skis
      *     a collection of SKIs of remote SHIP devices to trust
      * @return the updated {@link ShipCommunication}
