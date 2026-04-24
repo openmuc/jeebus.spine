@@ -1,7 +1,5 @@
 # jEEBus.SPINE
 
-<img src=".idea/icon.svg" width="200" style="float: right" align="right"/>
-
 [![maven-central](https://img.shields.io/maven-central/v/org.openmuc.jeebus/spine?logo=apachemaven)](https://central.sonatype.com/artifact/org.openmuc.jeebus/spine)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/openmuc/jeebus.spine)
 
