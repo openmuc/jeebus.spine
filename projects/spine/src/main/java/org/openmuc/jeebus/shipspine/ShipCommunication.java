@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -229,5 +231,13 @@ public class ShipCommunication extends Communication {
     public ShipCommunication withConnectClientsTo(ConnectClientsTo connectClientsTo) {
         this.connectClientsTo = connectClientsTo;
         return this;
+    }
+
+    public List<ShipConnectionInfoSnapshot> getConnectionInfos() {
+        if (Objects.nonNull(ship)) {
+            return ship.getConnectionInfos();
+        } else {
+            return new ArrayList<>();
+        }
     }
 }
