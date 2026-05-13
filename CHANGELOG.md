@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.0.1] - 2026-05-26
+
+### Changed
+
+- improve concurrent handling of outgoing subscription requests
+
+### Fixed
+
+- fix a bug causing multiple subscription requests from the same client feature
+
 ## [4.0.0] - 2026-04-23
 
 _First open-Source Release under the EPL-2.0_
