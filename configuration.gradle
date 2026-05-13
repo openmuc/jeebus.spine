@@ -11,7 +11,7 @@
 project.ext {
 
     cfgProjectGroup = "org.openmuc.jeebus"
-    cfgVersion = "4.0.1"
+    cfgVersion = "4.0.2-SNAPSHOT"
 
     // Release settings
 
