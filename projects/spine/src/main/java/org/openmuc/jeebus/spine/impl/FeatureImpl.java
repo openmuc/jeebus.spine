@@ -10,10 +10,13 @@
 
 package org.openmuc.jeebus.spine.impl;
 
-import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.*;
+import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.impl.parser.MessageParser;
-import org.openmuc.jeebus.spine.spi.*;
+import org.openmuc.jeebus.spine.spi.BindingListener;
+import org.openmuc.jeebus.spine.spi.FeaturePermission;
+import org.openmuc.jeebus.spine.spi.SpineConnection;
+import org.openmuc.jeebus.spine.spi.SpineSubscription;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 import org.slf4j.Logger;
@@ -21,7 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.PENDING;
+import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.SUCCESSFUL;
 import static org.openmuc.jeebus.spine.xsd.v1.CmdClassifierType.*;
 
 class FeatureImpl implements Feature {
@@ -29,8 +35,8 @@ class FeatureImpl implements Feature {
     private final Map<String, FeatureFunction> functions = new HashMap<>();
     private final FeatureAddressType address = new FeatureAddressType();
     private final List<FeatureAddressType> subscribers = new ArrayList<>();
-    private final Map<String, List<SpineSubscription>> subscriptions
-        = new HashMap<>();
+    private final Map<String, SubscriptionWrapper> subscriptions
+        = new ConcurrentHashMap<>();
     private final List<String> bindings = new ArrayList<>();
     private EntityImpl parent;
     private FeatureTypeEnumType featureType;
@@ -342,18 +348,18 @@ class FeatureImpl implements Feature {
     }
 
     public void notify(DatagramType datagram) {
-        String addressString = addressToString(datagram
+        String address = addressToString(datagram
             .getHeader()
             .getAddressSource());
-        List<SpineSubscription> threadSafeCopy;
-        synchronized (subscriptions) {
-            threadSafeCopy = new ArrayList<>(subscriptions.getOrDefault(
-                addressString,
-                Collections.emptyList()
-            ));
+        if (subscriptions.containsKey(address)) {
+            RequestResultImpl notification = new RequestResultImpl(datagram);
+            subscriptions
+                .get(address)
+                .getSubscriptions()
+                .forEach(sub -> sub.messageReceived(notification));
         }
-        for (SpineSubscription subscription : threadSafeCopy) {
-            subscription.messageReceived(new RequestResultImpl(datagram));
+        else {
+            LOGGER.debug("No subscriptions for {} but got notification.", address);
         }
     }
 
@@ -563,16 +569,27 @@ class FeatureImpl implements Feature {
     }
 
     @Override
-    public CompletableFuture<RequestResult> requestSubscription(
+    public synchronized CompletableFuture<RequestResult> requestSubscription(
         FeatureAddressType address,
         FeatureTypeEnumType featureType,
         SpineSubscription subscription
     ) {
-        if (subscriptionExists(address)) {
-            LOGGER.debug(
-                "Double subscription detected. Reusing existing subscription."
-            );
-            addSubscription(address, subscription, featureType);
+        String addressString = addressToString(address);
+        if(subscriptions.containsKey(addressString)) {
+            SubscriptionWrapper wrapper = subscriptions.get(addressString);
+            LOGGER.debug("Found existing subscription for address {}", wrapper);
+            wrapper.addSubscription(subscription);
+
+            if (wrapper.getState() != PENDING && wrapper.getState() != SUCCESSFUL) {
+                LOGGER.debug(
+                    "Previous subscription request was unsuccessful. Retrying."
+                );
+                CompletableFuture<RequestResult> future
+                    = makeSubscriptionRequest(address, featureType);
+                wrapper.retry(future);
+                return future;
+            }
+
             SpineAcknowledgment ack = new SpineAcknowledgment(
                 Error.NO_ERROR,
                 "Reusing existing subscription"
@@ -580,23 +597,45 @@ class FeatureImpl implements Feature {
             HeaderType originalHeader = new HeaderType();
             originalHeader.setAddressSource(getAddress());
             originalHeader.setAddressDestination(address);
-            return CompletableFuture.completedFuture(
-                new RequestResultImpl(ack.getDatagram(getResultHeader(originalHeader))));
+            return CompletableFuture.completedFuture(new RequestResultImpl(
+                ack.getDatagram(getResultHeader(originalHeader))));
         }
-        CmdType cmd
-            = ((NodeManagementImpl) getDevice().getNodeManagement()).getSubscriptionRequest(
-            getAddress(),
-            address, featureType
-        );
-        CompletableFuture<RequestResult> future = request(
-            ((NodeManagementImpl) getDevice().getNodeManagement()).getNodeManagementAddress(
-                address.getDevice()),
-            cmd, CALL, null
-        );
+        else {
+            CompletableFuture<RequestResult> future = makeSubscriptionRequest(
+                address,
+                featureType
+            );
 
-        future.thenRun(() -> addSubscription(address, subscription, featureType));
+            subscriptions.put(
+                addressString,
+                new SubscriptionWrapper(
+                    subscription,
+                    address,
+                    featureType,
+                    future
+                )
+            );
 
-        return future;
+            return future;
+        }
+    }
+
+    private CompletableFuture<RequestResult> makeSubscriptionRequest(
+        FeatureAddressType address,
+        FeatureTypeEnumType featureType
+    ) {
+        CmdType cmd = ((NodeManagementImpl) getDevice().getNodeManagement())
+            .getSubscriptionRequest(
+                getAddress(),
+                address,
+                featureType
+            );
+        return request(((NodeManagementImpl) getDevice().getNodeManagement())
+                .getNodeManagementAddress(address.getDevice()),
+            cmd,
+            CALL,
+            null
+        );
     }
 
     @Override
@@ -744,41 +783,18 @@ class FeatureImpl implements Feature {
         );
         future.thenAccept(result -> {
             address.setDevice(result.getSenderAddress().getDevice());
-            addSubscription(address, subscription, featureType);
+            subscriptions.put(
+                addressToString(address),
+                new SubscriptionWrapper(
+                    subscription,
+                    address,
+                    featureType,
+                    future
+                )
+            );
         });
 
         return future;
-    }
-
-    private boolean subscriptionExists(FeatureAddressType address) {
-        return subscriptions.containsKey(addressToString(address));
-    }
-
-    private void addSubscription(
-        FeatureAddressType address,
-        SpineSubscription subscription,
-        FeatureTypeEnumType serverFeatureType
-    ) {
-        String addressString = addressToString(address);
-        if (subscriptions.containsKey(addressString)) {
-            List<SpineSubscription> subscriptionList = subscriptions.get(addressString);
-
-            if (!subscriptionList.contains(subscription)) {
-                subscriptionList.add(subscription);
-            }
-        }
-        else {
-            List<SpineSubscription> list = new ArrayList<>(1);
-            list.add(subscription);
-            subscriptions.put(addressString, list);
-            NodeManagementImpl nodeManagement
-                = (NodeManagementImpl) getDevice().getNodeManagement();
-            nodeManagement.registerSubscriptionRequest(
-                getAddress(),
-                address,
-                serverFeatureType
-            );
-        }
     }
 
     public CompletableFuture<RequestResult> requestCall(
