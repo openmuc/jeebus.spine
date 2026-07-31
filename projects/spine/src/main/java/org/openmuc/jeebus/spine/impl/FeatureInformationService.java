@@ -20,6 +20,7 @@ import org.openmuc.jeebus.spine.utils.features.devicediagnosis.DeviceDiagnosisFe
 import org.openmuc.jeebus.spine.utils.features.electricalconnection.ElectricalConnectionFeature;
 import org.openmuc.jeebus.spine.utils.features.loadcontrol.LoadControlFeature;
 import org.openmuc.jeebus.spine.utils.features.measurement.MeasurementFeature;
+import org.openmuc.jeebus.spine.utils.features.setpoint.SetpointFeature;
 import org.openmuc.jeebus.spine.utils.features.timeseries.TimeSeriesFeature;
 import org.openmuc.jeebus.spine.xsd.v1.FeatureTypeEnumType;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public class FeatureInformationService {
         cache.put(FeatureTypeEnumType.MEASUREMENT, new MeasurementFeature.MetaInformation());
         cache.put(FeatureTypeEnumType.DEVICE_CLASSIFICATION, new DeviceClassificationFeature.MetaInformation());
         cache.put(FeatureTypeEnumType.TIME_SERIES, new TimeSeriesFeature.MetaInformation());
+        cache.put(FeatureTypeEnumType.SETPOINT, new SetpointFeature.MetaInformation());
     }
 
     private FeatureInformationService() {
