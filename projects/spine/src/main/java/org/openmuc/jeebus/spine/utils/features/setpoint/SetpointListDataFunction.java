@@ -24,6 +24,7 @@ import org.openmuc.jeebus.spine.utils.SpineUtilities;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 
 import java.util.*;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -65,6 +66,10 @@ public class SetpointListDataFunction extends SetpointFeatureFunction<
             super(FunctionEnumType.SETPOINT_LIST_DATA.value(), TYPE_INFO);
             this.executor = executor;
             setWritable(true, true);
+        }
+
+        public SetpointListDataFunction() {
+            this(Executors.newSingleThreadScheduledExecutor());
         }
 
         @Override
