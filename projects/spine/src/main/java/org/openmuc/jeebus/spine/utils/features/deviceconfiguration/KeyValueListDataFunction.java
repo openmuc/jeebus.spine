@@ -107,13 +107,12 @@ public class KeyValueListDataFunction extends ReadAndWriteListFeatureFunction<
     }
 
     private Double getCalculatedScaledValue(DeviceConfigurationKeyValueDataType update) {
-        try {
-            return new ScaledNumberWrapper(update.getValue().getScaledNumber())
-                .toDouble();
-        }
-        catch (IllegalArgumentException | NullPointerException e) {
-            return null;
-        }
+        return Optional.ofNullable(update)
+            .map(DeviceConfigurationKeyValueDataType::getValue)
+            .map(DeviceConfigurationKeyValueValueType::getScaledNumber)
+            .map(ScaledNumberWrapper::new)
+            .map(ScaledNumberWrapper::toDouble)
+            .orElse(null);
     }
 
     @Override
