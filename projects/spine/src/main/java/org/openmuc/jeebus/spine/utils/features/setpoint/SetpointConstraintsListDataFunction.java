@@ -71,16 +71,19 @@ public class SetpointConstraintsListDataFunction
     protected void validateData(SetpointConstraintsDataType constraints)
         throws DataValidationException {
         if (constraints.getSetpointRangeMin() == null){
-            throw new DataValidationException("Constraint SetpointRageMin not set");
-        }
+            logger.warn("Constraint SetpointRangeMin not set");
+        } else {
         if (constraints.getSetpointRangeMin().getScale() == null){
             logger.warn("SetpointRangeMin scale not set, default of 0 will be applied");
+            }
         }
         if (constraints.getSetpointRangeMax() == null) {
-            throw new DataValidationException("Constraint SetpointRangeMax not set");
-        }
-        if (constraints.getSetpointRangeMax().getScale() == null){
-            logger.warn("SetpointRangeMax scale not set, default of 0 will be applied");
+            logger.warn("Constraint SetpointRangeMax not set");
+        } else {
+            if (constraints.getSetpointRangeMax().getScale() == null) {
+                logger.warn(
+                    "SetpointRangeMax scale not set, default of 0 will be applied");
+            }
         }
         if (constraints.getSetpointStepSize() == null){
             logger.warn("Constraint SetpointStepSize not set");
