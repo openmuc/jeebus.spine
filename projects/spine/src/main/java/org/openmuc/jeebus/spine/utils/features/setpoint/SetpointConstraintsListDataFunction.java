@@ -85,9 +85,6 @@ public class SetpointConstraintsListDataFunction
                     "SetpointRangeMax scale not set, default of 0 will be applied");
             }
         }
-        if (constraints.getSetpointStepSize() == null){
-            logger.warn("Constraint SetpointStepSize not set");
-        }
     }
 
     @Override
