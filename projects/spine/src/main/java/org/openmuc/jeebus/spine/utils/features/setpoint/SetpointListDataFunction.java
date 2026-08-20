@@ -92,7 +92,10 @@ public class SetpointListDataFunction extends SetpointFeatureFunction<
         DataUpdateType dataUpdateType,
         Integer idx
         ) {
-
+            if (dataUpdateType != DataUpdateType.DELETE_DATA
+                && setpointDataType.getTimePeriod() != null) {
+                scheduleStartAndExpiration(idx, setpointDataType);
+            }
         }
 
         @Override
