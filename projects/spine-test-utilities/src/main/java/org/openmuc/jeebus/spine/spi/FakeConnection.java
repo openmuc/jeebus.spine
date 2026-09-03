@@ -23,10 +23,6 @@ public class FakeConnection implements SpineConnection {
     private static final Logger LOGGER
         = LoggerFactory.getLogger(FakeConnection.class);
 
-    static {
-        MessageParser.enablePrettyPrint();
-    }
-
     public FakeConnection(Communication partner, Communication device) {
         this.partner = partner;
         this.device = device;

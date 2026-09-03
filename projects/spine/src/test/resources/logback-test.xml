@@ -89,6 +89,8 @@
     <!-- EEBUS MESSAGE LOGGING -->
     <!-- Set to DEBUG to enable logging of all messages transmitted with SHIP -->
     <logger name="org.openmuc.jeebus.ship.shipconnection" level="INFO"/>
+    <!-- Set to DEBUG to enable logging of all messages transmitted with SHIP -->
+    <logger name="org.openmuc.jeebus.spine.spi.FakeConnection" level="DEBUG"/>
     <!-- Set to DEBUG to enable short, human-readable logging of SPINE messages -->
     <logger name="org.openmuc.jeebus.shipspine" level="DEBUG"/>
     <!-- Set to DEBUG to log discovered SHIP mDNS services -->

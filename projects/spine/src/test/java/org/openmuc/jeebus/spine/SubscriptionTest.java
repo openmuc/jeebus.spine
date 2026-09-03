@@ -12,11 +12,13 @@ package org.openmuc.jeebus.spine;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.RequestResult;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.AssertingSubscription;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionDataType.SubscriptionEntry;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -28,8 +30,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
+@Execution(SAME_THREAD)
 public class SubscriptionTest {
     private static final AssertingSubscription SUBSCRIPTION
         = new AssertingSubscription();
@@ -42,12 +46,17 @@ public class SubscriptionTest {
             getGenericDeviceBuilder(
                 REMOTE_COMM,
                 REMOTE_DEVICE_ADDRESS
-            ), RoleType.SERVER
-        ).build();
+            ),
+            RoleType.SERVER
+        ).withDiscoverDevices(false).build();
+
         client = addFeature(
-            getGenericDeviceBuilder(LOCAL_COMM, LOCAL_DEVICE_ADDRESS),
+            getGenericDeviceBuilder(
+                LOCAL_COMM,
+                LOCAL_DEVICE_ADDRESS
+            ),
             RoleType.CLIENT
-        ).withDiscoverDevices(true).build();
+        ).withDiscoverDevices(false).build();
     }
 
     @Test
@@ -107,7 +116,7 @@ public class SubscriptionTest {
             .getCmd()
             .getNodeManagementSubscriptionData();
 
-        List<NodeManagementSubscriptionDataType.SubscriptionEntry> result
+        List<SubscriptionEntry> result
             = subscriptionData
             .getSubscriptionEntry()
             .stream()
@@ -145,7 +154,7 @@ public class SubscriptionTest {
     private boolean containsSubscription(NodeManagementSubscriptionDataType subscriptionData) {
         if (subscriptionData != null
             && subscriptionData.getSubscriptionEntry() != null) {
-            for (NodeManagementSubscriptionDataType.SubscriptionEntry subscription : subscriptionData.getSubscriptionEntry()) {
+            for (SubscriptionEntry subscription : subscriptionData.getSubscriptionEntry()) {
                 if (addressEquals(
                     subscription.getClientAddress(),
                     CLIENT_FEATURE_ADDRESS

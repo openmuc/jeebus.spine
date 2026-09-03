@@ -11,6 +11,10 @@
 - deprecate `Communication#open` to be replaced by `Communication#openConnection`
   with clearer handling of concurrency
 
+### Fixed
+
+- fix a bug where client subscriptions are not stored in `SubscriptionDataFunction`
+
 ## [4.0.1] - 2026-05-26
 
 ### Changed

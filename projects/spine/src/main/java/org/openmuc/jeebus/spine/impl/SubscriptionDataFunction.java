@@ -14,12 +14,15 @@ import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionDataType.SubscriptionEntry;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionDeleteCallType.SubscriptionDelete;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 class SubscriptionDataFunction extends FeatureFunction {
-    private final Map<String, List<NodeManagementSubscriptionDataType.SubscriptionEntry>>
+    private final Map<String, Set<SubscriptionEntry>>
         subscriptions = new ConcurrentHashMap<>();
 
     protected SubscriptionDataFunction() {
@@ -28,57 +31,76 @@ class SubscriptionDataFunction extends FeatureFunction {
     }
 
     @Override
-    public CmdType read(FilterType filter, FeatureAddressType sourceAddress) {
+    public CmdType read(
+        FilterType filter,
+        FeatureAddressType sourceAddress
+    ) {
         CmdType cmd = new CmdType();
         NodeManagementSubscriptionDataType data
             = new NodeManagementSubscriptionDataType();
         data.getSubscriptionEntry()
             .addAll(subscriptions.getOrDefault(
                 sourceAddress.getDevice(),
-                Collections.emptyList()
+                Collections.emptySet()
             ));
         cmd.setNodeManagementSubscriptionData(data);
         return cmd;
     }
 
     @Override
-    public SpineAcknowledgment write(CmdType cmd, FeatureAddressType sourceAddress) {
+    public SpineAcknowledgment write(
+        CmdType cmd,
+        FeatureAddressType sourceAddress
+    ) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public SpineAcknowledgment call(CmdType cmd, FeatureAddressType sourceAddress) {
+    public SpineAcknowledgment call(
+        CmdType cmd,
+        FeatureAddressType sourceAddress
+    ) {
         throw new UnsupportedOperationException();
     }
 
-    void addSubscriptionEntry(NodeManagementSubscriptionRequestCallType.SubscriptionRequest subscriptionRequest) {
-        NodeManagementSubscriptionDataType.SubscriptionEntry subscriptionEntry
-            = new NodeManagementSubscriptionDataType.SubscriptionEntry();
+
+    public void addSubscriptionEntry(
+        FeatureAddressType client,
+        FeatureAddressType server
+    ) {
+        addSubscriptionEntry(new SubscriptionRequest()
+            .withClientAddress(client)
+            .withServerAddress(server)
+        );
+    }
+
+    void addSubscriptionEntry(SubscriptionRequest subscriptionRequest) {
+
+        SubscriptionEntry subscriptionEntry = new SubscriptionEntry();
         subscriptionEntry.setClientAddress(subscriptionRequest.getClientAddress());
         subscriptionEntry.setServerAddress(subscriptionRequest.getServerAddress());
 
         String remoteDeviceId;
-        if (subscriptionRequest
-            .getClientAddress()
-            .getDevice()
-            .equals(feature.getDevice().getAddress().getDevice())) {
+        if (Objects.equals(
+            subscriptionRequest.getClientAddress().getDevice(),
+            feature.getDevice().getAddress().getDevice()
+        )) {
             remoteDeviceId = subscriptionRequest.getServerAddress().getDevice();
         }
         else {
             remoteDeviceId = subscriptionRequest.getClientAddress().getDevice();
         }
         if (!subscriptions.containsKey(remoteDeviceId)) {
-            subscriptions.put(remoteDeviceId, new ArrayList<>());
+            subscriptions.put(remoteDeviceId, new HashSet<>());
         }
         subscriptions.get(remoteDeviceId).add(subscriptionEntry);
     }
 
-    void removeSubscriptionEntry(NodeManagementSubscriptionDeleteCallType.SubscriptionDelete subscriptionDelete)
-        throws SpineException {
-        List<NodeManagementSubscriptionDataType.SubscriptionEntry> newEntryList
-            = new ArrayList<>();
-        List<NodeManagementSubscriptionDataType.SubscriptionEntry> deletedEntryList
-            = new ArrayList<>();
+    void removeSubscriptionEntry(SubscriptionDelete subscriptionDelete)
+        throws SpineException
+    {
+        Set<SubscriptionEntry> newEntryList = new HashSet<>();
+        Set<SubscriptionEntry> deletedEntryList = new HashSet<>();
         String remoteDeviceId;
         if (subscriptionDelete
             .getClientAddress()
@@ -89,9 +111,9 @@ class SubscriptionDataFunction extends FeatureFunction {
         else {
             remoteDeviceId = subscriptionDelete.getClientAddress().getDevice();
         }
-        for (NodeManagementSubscriptionDataType.SubscriptionEntry entry : subscriptions.getOrDefault(
+        for (SubscriptionEntry entry : subscriptions.getOrDefault(
             remoteDeviceId,
-            Collections.emptyList()
+            Collections.emptySet()
         )) {
             if (matchAddress(
                 entry.getServerAddress(),
@@ -106,7 +128,7 @@ class SubscriptionDataFunction extends FeatureFunction {
         }
         subscriptions.put(remoteDeviceId, newEntryList);
 
-        for (NodeManagementSubscriptionDataType.SubscriptionEntry entry : deletedEntryList) {
+        for (SubscriptionEntry entry : deletedEntryList) {
             if (entry
                 .getServerAddress()
                 .getDevice()
@@ -119,25 +141,23 @@ class SubscriptionDataFunction extends FeatureFunction {
         }
     }
 
-    Map<String, List<NodeManagementSubscriptionDeleteCallType.SubscriptionDelete>> deleteSubscriptions(
+    Map<String, Set<SubscriptionDelete>> deleteSubscriptions(
         FeatureAddressType featureAddress
     ) {
-        Map<String, List<NodeManagementSubscriptionDeleteCallType.SubscriptionDelete>>
-            subscriptionDeletes = new HashMap<>();
-        for (Map.Entry<String, List<NodeManagementSubscriptionDataType.SubscriptionEntry>> deviceSubscriptions : subscriptions.entrySet()) {
-            List<NodeManagementSubscriptionDataType.SubscriptionEntry>
-                newSubscriptionEntries = new ArrayList<>();
-            List<NodeManagementSubscriptionDeleteCallType.SubscriptionDelete>
-                releasedSubscriptions = new ArrayList<>();
-            for (NodeManagementSubscriptionDataType.SubscriptionEntry subscriptionEntry : deviceSubscriptions.getValue()) {
+        Map<String, Set<SubscriptionDelete>> subscriptionDeletes = new HashMap<>();
+
+        for (Map.Entry<String, Set<SubscriptionEntry>> deviceSubscriptions : subscriptions.entrySet()) {
+            Set<SubscriptionEntry> newSubscriptionEntries = new HashSet<>();
+            Set<SubscriptionDelete> releasedSubscriptions = new HashSet<>();
+            for (SubscriptionEntry subscriptionEntry : deviceSubscriptions.getValue()) {
                 if (matchAddress(
                     subscriptionEntry.getClientAddress(),
                     featureAddress
                 ) || matchAddress(
                     subscriptionEntry.getServerAddress(), featureAddress)) {
-                    NodeManagementSubscriptionDeleteCallType.SubscriptionDelete
+                    SubscriptionDelete
                         subscriptionDelete
-                        = new NodeManagementSubscriptionDeleteCallType.SubscriptionDelete();
+                        = new SubscriptionDelete();
                     subscriptionDelete.setClientAddress(subscriptionEntry.getClientAddress());
                     subscriptionDelete.setServerAddress(subscriptionEntry.getServerAddress());
                     releasedSubscriptions.add(subscriptionDelete);

@@ -15,8 +15,11 @@ import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 class SubscriptionRequestFunction extends FeatureFunction {
     private static final Logger LOGGER = LoggerFactory.getLogger(
@@ -41,8 +44,7 @@ class SubscriptionRequestFunction extends FeatureFunction {
 
     @Override
     public SpineAcknowledgment call(CmdType cmd, FeatureAddressType sourceAddress) {
-        NodeManagementSubscriptionRequestCallType.SubscriptionRequest
-            subscriptionRequest = cmd
+        SubscriptionRequest subscriptionRequest = cmd
             .getNodeManagementSubscriptionRequestCall()
             .getSubscriptionRequest();
 
@@ -56,24 +58,18 @@ class SubscriptionRequestFunction extends FeatureFunction {
             return e.getAcknowledgment();
         }
 
-        if (feature
-            .getType()
-            .value()
-            .equals(subscriptionRequest.getServerFeatureType())) {
-            boolean subscribed = feature.subscribe(subscriptionRequest);
-            if (subscribed) {
+        String reason
+            = "Subscription request denied due to wrong feature type in request";
+        if (Objects.equals(
+            feature.getType().value(),
+            subscriptionRequest.getServerFeatureType()
+        )) {
+            if (feature.subscribe(subscriptionRequest)) {
                 subscriptionDataFunction.addSubscriptionEntry(subscriptionRequest);
                 return new SpineAcknowledgment(Error.NO_ERROR);
             }
             else {
-                LOGGER.debug(
-                    "Subscription from device {} denied",
-                    subscriptionRequest.getClientAddress().getDevice()
-                );
-                return new SpineAcknowledgment(
-                    Error.COMMAND_REJECTED,
-                    "Subscription request denied"
-                );
+                reason = "Subscription request denied";
             }
         }
         LOGGER.debug(
@@ -82,7 +78,7 @@ class SubscriptionRequestFunction extends FeatureFunction {
         );
         return new SpineAcknowledgment(
             Error.COMMAND_REJECTED,
-            "Subscription request denied due to wrong feature type in request"
+            reason
         );
     }
 

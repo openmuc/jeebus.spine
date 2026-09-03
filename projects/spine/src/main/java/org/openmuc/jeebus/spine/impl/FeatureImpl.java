@@ -19,6 +19,7 @@ import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.openmuc.jeebus.spine.spi.SpineSubscription;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +54,13 @@ class FeatureImpl implements Feature {
         = Set.of(WRITE, CALL);
     private final Set<BindingListener> bindingListeners = new HashSet<>();
 
-    FeatureImpl() {
+    FeatureImpl() {}
+
+    private NodeManagementImpl getNodeManagement() {
+        return ((NodeManagementImpl) getDevice().getNodeManagement());
     }
 
-    public boolean subscribe(NodeManagementSubscriptionRequestCallType.SubscriptionRequest subscriptionRequest) {
+    public boolean subscribe(SubscriptionRequest subscriptionRequest) {
         LOGGER.debug("Processing subscription request {}", subscriptionRequest);
         try {
             checkTrustLevel(subscriptionRequest.getClientAddress());
@@ -66,8 +70,10 @@ class FeatureImpl implements Feature {
         }
         if ((role.equals(RoleType.SERVER) || role.equals(RoleType.SPECIAL))
             && featurePermission != null
-            && featurePermission.subscriptionAllowed(subscriptionRequest)) {
+            && featurePermission.subscriptionAllowed(subscriptionRequest)
+        ) {
             subscribers.add(subscriptionRequest.getClientAddress());
+
             LOGGER.debug("Subscription request accepted.");
             return true;
         }
@@ -424,7 +430,7 @@ class FeatureImpl implements Feature {
         functions.put(function.getFunctionName(), function);
         if (featureWrapper != null) featureWrapper.updateFunction(function);
         if (getDevice() != null) {
-            ((NodeManagementImpl) getDevice().getNodeManagement()).featureChanged(
+            getNodeManagement().featureChanged(
                 getAddress(),
                 function.getFunctionName()
             );
@@ -498,10 +504,7 @@ class FeatureImpl implements Feature {
          * But for now, we are.
          */
         ConnectionHandler connHandler = getDevice().getConnectionHandler();
-        if (Objects.equals(
-            address.getDevice(),
-            getDevice().getAddress().getDevice()
-        )) {
+        if (isUs(address)) {
             getDevice().parseDatagram(datagram);
         }
         else {
@@ -512,7 +515,6 @@ class FeatureImpl implements Feature {
                     /* One might think that, if we have no communication address,
                      * surely we cannot reach the destination device, and so we should
                      * exit early.
-                     *
                      * One would be wrong: at the very least in the test
                      * suite, which uses a FakeCommunication implementation that does
                      * no networking, a communication address for the destination
@@ -523,15 +525,22 @@ class FeatureImpl implements Feature {
                     // can (probably) ignore it; see above explanation.
                     LOGGER.warn(
                         "Feature {} attempting to send to device {}, but could not find a communication address for that destination!",
-                        this,
-                        address.getDevice()
+                        addressToString(this.getAddress()),
+                        addressToString(address)
                     );
                 }
             }
             SpineConnection connection = connHandler.newConnection(
-                communicationAddress);
+                communicationAddress
+            );
             connection.sendMessage(datagram);
         }
+    }
+
+    private boolean isUs(FeatureAddressType address) {
+        return Objects.equals(
+            address.getDevice(),
+            getDevice().getAddress().getDevice());
     }
 
     private DatagramType completeDatagram(
@@ -577,7 +586,7 @@ class FeatureImpl implements Feature {
         String addressString = addressToString(address);
         if(subscriptions.containsKey(addressString)) {
             SubscriptionWrapper wrapper = subscriptions.get(addressString);
-            LOGGER.debug("Found existing subscription for address {}", wrapper);
+            LOGGER.debug("Found existing subscription for {}", wrapper);
             wrapper.addSubscription(subscription);
 
             if (wrapper.getState() != PENDING && wrapper.getState() != SUCCESSFUL) {
@@ -597,6 +606,7 @@ class FeatureImpl implements Feature {
             HeaderType originalHeader = new HeaderType();
             originalHeader.setAddressSource(getAddress());
             originalHeader.setAddressDestination(address);
+
             return CompletableFuture.completedFuture(new RequestResultImpl(
                 ack.getDatagram(getResultHeader(originalHeader))));
         }
@@ -624,18 +634,31 @@ class FeatureImpl implements Feature {
         FeatureAddressType address,
         FeatureTypeEnumType featureType
     ) {
-        CmdType cmd = ((NodeManagementImpl) getDevice().getNodeManagement())
+        NodeManagementImpl nodeManagement = getNodeManagement();
+
+        CmdType cmd = nodeManagement
             .getSubscriptionRequest(
                 getAddress(),
                 address,
                 featureType
             );
-        return request(((NodeManagementImpl) getDevice().getNodeManagement())
-                .getNodeManagementAddress(address.getDevice()),
+
+        return request(
+            nodeManagement.getNodeManagementAddress(address.getDevice()),
             cmd,
             CALL,
             null
-        );
+        ).whenComplete((result, error) -> {
+            if (error == null && result != null) {
+                getNodeManagement()
+                    .getFunction(SubscriptionDataFunction.class)
+                    .orElseThrow()
+                    .addSubscriptionEntry(
+                        this.getAddress(),
+                        address
+                    );
+            }
+        });
     }
 
     @Override
@@ -644,7 +667,7 @@ class FeatureImpl implements Feature {
         FeatureTypeEnumType featureType
     ) {
         NodeManagementImpl nodeManagement
-            = (NodeManagementImpl) getDevice().getNodeManagement();
+            = getNodeManagement();
         CmdType cmd = nodeManagement.getBindingRequest(
             getAddress(),
             address,
@@ -662,7 +685,7 @@ class FeatureImpl implements Feature {
     public void releaseSubscription(FeatureAddressType address) {
         subscriptions.remove(addressToString(address));
         NodeManagementImpl nodeManagement
-            = (NodeManagementImpl) getDevice().getNodeManagement();
+            = getNodeManagement();
         nodeManagement.sendSubscriptionRelease(getAddress(), address);
     }
 
@@ -670,7 +693,7 @@ class FeatureImpl implements Feature {
     public void releaseSubscriber(FeatureAddressType subscriberAddress) {
         removeSubscriber(subscriberAddress);
         NodeManagementImpl nodeManagement
-            = (NodeManagementImpl) getDevice().getNodeManagement();
+            = getNodeManagement();
         nodeManagement.sendSubscriptionRelease(subscriberAddress, getAddress());
     }
 
@@ -681,7 +704,7 @@ class FeatureImpl implements Feature {
         }
         removeBinding(clientAddress);
         NodeManagementImpl nodeManagement
-            = (NodeManagementImpl) getDevice().getNodeManagement();
+            = getNodeManagement();
         nodeManagement.sendBindingRelease(clientAddress, getAddress());
     }
 
@@ -691,7 +714,7 @@ class FeatureImpl implements Feature {
             throw new UnsupportedOperationException();
         }
         NodeManagementImpl nodeManagement
-            = (NodeManagementImpl) getDevice().getNodeManagement();
+            = getNodeManagement();
         nodeManagement.sendBindingRelease(getAddress(), serverAddress);
     }
 
@@ -752,49 +775,17 @@ class FeatureImpl implements Feature {
     }
 
     public void removeSubscriber(FeatureAddressType subscriberAddress) {
-        subscribers.removeIf(
-            subscriber -> subscriber
-                .getDevice()
-                .equals(subscriberAddress.getDevice()) && subscriber.getFeature()
-                .equals(subscriberAddress.getFeature()) && subscriber.getEntity()
-                .equals(subscriberAddress.getEntity()
-                ));
-    }
-
-    public CompletableFuture<RequestResult> requestSubscription(
-        FeatureAddressType address,
-        FeatureTypeEnumType featureType,
-        SpineSubscription subscription,
-        String communicationAddress
-    ) {
-        CmdType cmd
-            = ((NodeManagementImpl) getDevice().getNodeManagement())
-            .getSubscriptionRequest(
-                getAddress(),
-                address,
-                featureType
-        );
-        CompletableFuture<RequestResult> future = request(
-            ((NodeManagementImpl) getDevice().getNodeManagement())
-                .getNodeManagementAddress(null),
-            cmd,
-            CALL,
-            communicationAddress
-        );
-        future.thenAccept(result -> {
-            address.setDevice(result.getSenderAddress().getDevice());
-            subscriptions.put(
-                addressToString(address),
-                new SubscriptionWrapper(
-                    subscription,
-                    address,
-                    featureType,
-                    future
-                )
-            );
-        });
-
-        return future;
+        subscribers.removeIf(subscriber ->
+            Objects.equals(
+                subscriber.getDevice(),
+                subscriberAddress.getDevice())
+            && Objects.equals(
+                subscriber.getFeature(),
+                subscriberAddress.getFeature())
+            && Objects.equals(
+                subscriber.getEntity(),
+                subscriberAddress.getEntity()
+        ));
     }
 
     public CompletableFuture<RequestResult> requestCall(

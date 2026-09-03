@@ -17,6 +17,9 @@ import org.openmuc.jeebus.spine.spi.*;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.utils.NamedThreadFactory;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingRequestCallType.BindingRequest;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionDeleteCallType.SubscriptionDelete;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,13 +37,13 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         = LoggerFactory.getLogger(NodeManagement.class);
     public static final FeaturePermission FEATURE_PERMISSION = new FeaturePermission() {
         @Override
-        public boolean bindingAllowed(NodeManagementBindingRequestCallType.BindingRequest bindingRequest) {
+        public boolean bindingAllowed(BindingRequest bindingRequest) {
             return false;
         }
 
         @Override
         public boolean subscriptionAllowed(
-                NodeManagementSubscriptionRequestCallType.SubscriptionRequest subscriptionRequest
+            SubscriptionRequest subscriptionRequest
         ) {
             return true;
         }
@@ -91,8 +94,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         CmdType subscriptionDeleteCmd = new CmdType();
         NodeManagementSubscriptionDeleteCallType deleteCall
             = new NodeManagementSubscriptionDeleteCallType();
-        NodeManagementSubscriptionDeleteCallType.SubscriptionDelete subscription
-            = new NodeManagementSubscriptionDeleteCallType.SubscriptionDelete();
+        SubscriptionDelete subscription
+            = new SubscriptionDelete();
         subscription.setClientAddress(clientAddress);
         subscription.setServerAddress(serverAddress);
         deleteCall.setSubscriptionDelete(subscription);
@@ -336,17 +339,20 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         SubscriptionDataFunction subscriptionDataFunction
             = (SubscriptionDataFunction) getFunction(
             NODE_MANAGEMENT_SUBSCRIPTION_DATA);
-        for (Map.Entry<String, List<NodeManagementSubscriptionDeleteCallType.SubscriptionDelete>> releasedSubscriptions : subscriptionDataFunction
-            .deleteSubscriptions(
-                address)
-            .entrySet()) {
+        for (Map.Entry<String, Set<SubscriptionDelete>> releasedSubscriptions
+            : subscriptionDataFunction.deleteSubscriptions(address).entrySet()
+        ) {
             CmdType subscriptionDeleteCmd = new CmdType();
             NodeManagementSubscriptionDeleteCallType deleteCall
                 = new NodeManagementSubscriptionDeleteCallType();
-            for (NodeManagementSubscriptionDeleteCallType.SubscriptionDelete subscriptionDelete : releasedSubscriptions.getValue()) {
+
+            for (SubscriptionDelete subscriptionDelete
+                : releasedSubscriptions.getValue()
+            ) {
                 deleteCall.setSubscriptionDelete(subscriptionDelete);
                 subscriptionDeleteCmd.setNodeManagementSubscriptionDeleteCall(
-                    deleteCall);
+                    deleteCall
+                );
                 requestCall(
                     getNodeManagementAddress(releasedSubscriptions.getKey()),
                     subscriptionDeleteCmd
@@ -452,25 +458,6 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         }
     }
 
-    public void registerSubscriptionRequest(
-        FeatureAddressType clientAddress,
-        FeatureAddressType serverAddress,
-        FeatureTypeEnumType serverFeatureType
-    ) {
-        NodeManagementSubscriptionRequestCallType.SubscriptionRequest
-            subscriptionRequest = getSubscriptionRequest(
-            clientAddress,
-            serverAddress,
-            serverFeatureType
-        )
-            .getNodeManagementSubscriptionRequestCall()
-            .getSubscriptionRequest();
-
-        ((SubscriptionDataFunction)
-            getFunction(NODE_MANAGEMENT_SUBSCRIPTION_DATA))
-            .addSubscriptionEntry(subscriptionRequest);
-    }
-
     public CmdType getSubscriptionRequest(
         FeatureAddressType clientAddress,
         FeatureAddressType serverAddress,
@@ -478,9 +465,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     ) {
         NodeManagementSubscriptionRequestCallType subscriptionRequestCall
             = new NodeManagementSubscriptionRequestCallType();
-        NodeManagementSubscriptionRequestCallType.SubscriptionRequest
-            subscriptionRequest
-            = new NodeManagementSubscriptionRequestCallType.SubscriptionRequest();
+        SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
         subscriptionRequest.setClientAddress(clientAddress);
         subscriptionRequest.setServerAddress(serverAddress);
         subscriptionRequest.setServerFeatureType(serverFeatureType.value());
@@ -498,8 +483,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     ) {
         NodeManagementBindingRequestCallType bindingRequestCall
             = new NodeManagementBindingRequestCallType();
-        NodeManagementBindingRequestCallType.BindingRequest bindingRequest
-            = new NodeManagementBindingRequestCallType.BindingRequest();
+        BindingRequest bindingRequest = new BindingRequest();
         bindingRequest.setClientAddress(clientAddress);
         bindingRequest.setServerAddress(serverAddress);
         bindingRequest.setServerFeatureType(serverFeatureType.value());
@@ -756,8 +740,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         return requestSubscription(
             getNodeManagementAddress(deviceAddress),
             FeatureTypeEnumType.NODE_MANAGEMENT,
-            listener,
-            communicationAddress
+            listener
         );
     }
 

@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingSupplier;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.RequestResult;
 import org.openmuc.jeebus.spine.api.SpineException;
@@ -25,8 +27,10 @@ import org.openmuc.jeebus.spine.xsd.v1.RoleType;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
+@Execution(SAME_THREAD)
 public class BindingTest {
     private Device client;
     private Device server;
