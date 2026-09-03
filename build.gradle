@@ -110,7 +110,7 @@ subprojects {
         // implementation name: 'ship-2.2.0-SNAPSHOT'
 
         // https://mvnrepository.com/artifact/com.fasterxml.jackson/jackson-bom
-        implementation platform("com.fasterxml.jackson:jackson-bom:2.21.0")
+        implementation platform("com.fasterxml.jackson:jackson-bom:2.22.2")
         // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind
         implementation "com.fasterxml.jackson.core:jackson-databind"
         // https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations
@@ -125,10 +125,11 @@ subprojects {
         implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.5'
 
         // https://mvnrepository.com/artifact/org.jvnet.jaxb/jaxb-plugins-runtime
-        implementation 'org.jvnet.jaxb:jaxb-plugins-runtime:4.0.12'
+        implementation 'org.jvnet.jaxb:jaxb-plugins-runtime:4.0.16'
 
         // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-        implementation 'org.slf4j:slf4j-api:2.0.17'
+        implementation 'org.slf4j:slf4j-api:2.0.18'
+
 
         // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
         testImplementation "org.junit.jupiter:junit-jupiter-api:$cfgJunitVersion"
