@@ -14,9 +14,14 @@ import org.openmuc.jeebus.ship.api.ShipConnectionInterface;
 import org.openmuc.jeebus.spine.impl.parser.MessageParser;
 import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.openmuc.jeebus.spine.utils.SpineUtilities;
+import org.openmuc.jeebus.spine.xsd.v1.CmdClassifierType;
 import org.openmuc.jeebus.spine.xsd.v1.DatagramType;
+import org.openmuc.jeebus.spine.xsd.v1.FeatureAddressType;
+import org.openmuc.jeebus.spine.xsd.v1.HeaderType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 
 public class ShipSpineConnection implements SpineConnection {
     private static final Logger LOGGER
@@ -32,9 +37,19 @@ public class ShipSpineConnection implements SpineConnection {
     public void sendMessage(DatagramType datagram) {
         LOGGER.debug(
             "sending {} {} to {}",
-            datagram.getHeader().getCmdClassifier().value(),
+            Optional
+                .ofNullable(datagram)
+                .map(DatagramType::getHeader)
+                .map(HeaderType::getCmdClassifier)
+                .map(CmdClassifierType::value)
+                .orElse(null),
             SpineUtilities.simplifyCmds(datagram),
-            datagram.getHeader().getAddressDestination().getDevice()
+            Optional
+                .ofNullable(datagram)
+                .map(DatagramType::getHeader)
+                .map(HeaderType::getAddressDestination)
+                .map(FeatureAddressType::getDevice)
+                .orElse(null)
         );
 
         byte[] payload = MessageParser.toJson(datagram);
@@ -43,7 +58,7 @@ public class ShipSpineConnection implements SpineConnection {
 
     @Override
     public String getCommunicationAddress() {
-        return shipConnection.getRemoteAddress();
+        return shipConnection.getRemoteId();
     }
 
     @Override

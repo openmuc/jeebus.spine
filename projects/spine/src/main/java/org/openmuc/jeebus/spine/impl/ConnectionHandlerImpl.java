@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 class ConnectionHandlerImpl implements ConnectionHandler {
     private static final Logger LOGGER
@@ -33,15 +34,20 @@ class ConnectionHandlerImpl implements ConnectionHandler {
 
     @Override
     public SpineConnection newConnection(String address) {
-        SpineConnection connection;
+        SpineConnection connection = null;
         if (connections.containsKey(address)) {
             LOGGER.trace("{} : Reusing registered connection to device", address);
             connection = connections.get(address);
         }
         else {
             LOGGER.debug("{} : Opening new connection to device", address);
-            connection = getCommunication().open(address);
-            connections.put(address, connection);
+            try {
+                connection = getCommunication().openConnection(address).get();
+                connections.put(address, connection);
+            }
+            catch (ExecutionException | InterruptedException e) {
+                LOGGER.error("Could not open any connection to {}", address, e);
+            }
         }
         return connection;
     }

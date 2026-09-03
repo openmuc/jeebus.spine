@@ -8,9 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  ********************************************************************************/
 
+plugins {
+    id 'application'
+    id 'java'
+}
+
 dependencies {
     implementation project(':spine')
 
     // https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
     runtimeOnly 'ch.qos.logback:logback-classic:1.5.29'
+}
+
+application {
+    mainClass = 'org.openmuc.jeebus.spine.demo.MinimalExampleDevice'
 }

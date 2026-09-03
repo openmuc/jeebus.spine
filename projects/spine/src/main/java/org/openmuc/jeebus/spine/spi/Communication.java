@@ -15,6 +15,8 @@ import org.openmuc.jeebus.spine.xsd.v1.DatagramType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
+
 public abstract class Communication {
     private static final Logger LOGGER
         = LoggerFactory.getLogger(Communication.class);
@@ -38,10 +40,25 @@ public abstract class Communication {
     /**
      * @param address
      *     the address used in the communication protocol, i.e. not the SPINE device
-     *     address
+     *     address. Must be a valid String representation of a SocketAddress
      * @return a connection to the requested device
+     * @deprecated since 4.1.0 and scheduled to be replaced by
+     * {@link Communication#openConnection(String)}
      */
+    @Deprecated(since = "4.1.0", forRemoval = true)
     public abstract SpineConnection open(String address);
+
+    /**
+     * @param communicationAddress
+     *     the unique identifier for a device in a communication protocol. For SHIP
+     *     this is the SHIP ID.
+     * @return a CompletableFuture that completes with an Interface to represent this
+     * particular connection to another SPINE device, or fails if the connection
+     * attempt was unsuccessful
+     */
+    public abstract CompletableFuture<? extends SpineConnection> openConnection(
+        String communicationAddress
+    );
 
     public void setDevice(Device device) {
         this.device = device;

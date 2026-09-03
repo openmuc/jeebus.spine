@@ -10,6 +10,8 @@
 
 package org.openmuc.jeebus.spine.spi;
 
+import java.util.concurrent.CompletableFuture;
+
 public class FakeCommunication extends Communication {
     final String address;
     private FakeCommunication partner;
@@ -42,6 +44,13 @@ public class FakeCommunication extends Communication {
     @Override
     public SpineConnection open(String address) {
         return new FakeConnection(partner, this);
+    }
+
+    @Override
+    public CompletableFuture<? extends SpineConnection> openConnection(
+        String communicationAddress
+    ) {
+        return CompletableFuture.completedFuture(new FakeConnection(partner, this));
     }
 
     public void setCommunicationPartner(FakeCommunication communicationPartner) {

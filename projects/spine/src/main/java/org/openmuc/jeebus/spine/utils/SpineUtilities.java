@@ -21,8 +21,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -82,18 +81,20 @@ public class SpineUtilities {
      * given Datagram.
      */
     public static String simplifyCmds(DatagramType what) {
-        String result = what
-            .getPayload()
-            .getCmd()
+        String result = Optional.ofNullable(what)
+            .map(DatagramType::getPayload)
+            .map(PayloadType::getCmd)
             .stream()
+            .flatMap(List::stream)
             .map(SpineUtilities::simplifyCmd)
             .collect(Collectors.joining());
 
         if (Objects.equals("function", result)) {
-            result = what
-                .getPayload()
-                .getCmd()
+            result = Optional.ofNullable(what)
+                .map(DatagramType::getPayload)
+                .map(PayloadType::getCmd)
                 .stream()
+                .flatMap(List::stream)
                 .map(CmdType::getFunction)
                 .collect(Collectors.joining());
         }

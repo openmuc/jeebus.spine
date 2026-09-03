@@ -49,6 +49,7 @@
             <option name="LINE_COMMENT_ADD_SPACE" value="true" />
             <option name="BLOCK_COMMENT_ADD_SPACE" value="true" />
             <option name="LINE_COMMENT_ADD_SPACE_ON_REFORMAT" value="true" />
+            <option name="DOCUMENTATION_LINE_COMMENT_PREFERRED" value="false" />
             <option name="KEEP_FIRST_COLUMN_COMMENT" value="false" />
             <option name="KEEP_CONTROL_STATEMENT_IN_ONE_LINE" value="false" />
             <option name="KEEP_BLANK_LINES_IN_DECLARATIONS" value="1" />
@@ -59,6 +60,7 @@
             <option name="FINALLY_ON_NEW_LINE" value="true" />
             <option name="ALIGN_MULTILINE_PARAMETERS" value="false" />
             <option name="ALIGN_MULTILINE_RESOURCES" value="false" />
+            <option name="SPACE_AROUND_ADDITIVE_OPERATORS" value="false" />
             <option name="SPACE_WITHIN_ARRAY_INITIALIZER_BRACES" value="true" />
             <option name="SPACE_BEFORE_ARRAY_INITIALIZER_LBRACE" value="true" />
             <option name="CALL_PARAMETERS_WRAP" value="5" />
@@ -105,9 +107,9 @@
         </codeStyleSettings>
         <codeStyleSettings language="Markdown">
             <indentOptions>
-                <option name="INDENT_SIZE" value="3" />
-                <option name="CONTINUATION_INDENT_SIZE" value="3" />
-                <option name="TAB_SIZE" value="3" />
+                <option name="INDENT_SIZE" value="2" />
+                <option name="CONTINUATION_INDENT_SIZE" value="2" />
+                <option name="TAB_SIZE" value="2" />
             </indentOptions>
         </codeStyleSettings>
         <codeStyleSettings language="Properties">

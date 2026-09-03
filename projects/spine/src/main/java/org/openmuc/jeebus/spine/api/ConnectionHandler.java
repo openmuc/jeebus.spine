@@ -14,6 +14,12 @@ import org.openmuc.jeebus.spine.spi.SpineConnection;
 
 import java.util.NoSuchElementException;
 
+/**
+ * This Interface is responsible for mapping communication addresses (i.e. SHIP IDs)
+ * to SPINE device addresses and connections.
+ * @deprecated since 4.1.0 and scheduled to be renamed to ConnectionMapper
+ */
+@Deprecated(since = "4.1.0")
 public interface ConnectionHandler {
 
     /**

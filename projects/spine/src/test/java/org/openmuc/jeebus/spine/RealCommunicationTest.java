@@ -17,7 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmuc.jeebus.ship.api.ShipNodeConfiguration;
+import org.openmuc.jeebus.ship.api.cert.KeyStoreCertificateStorage;
+import org.openmuc.jeebus.ship.node.ShipConfig;
 import org.openmuc.jeebus.shipspine.ShipCommunication;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.Error;
@@ -26,9 +27,15 @@ import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.Communication;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
+import static org.openmuc.jeebus.shipspine.ShipCommunication.ConnectClientsTo.NONE;
+import static org.openmuc.jeebus.shipspine.ShipCommunication.ConnectClientsTo.TRUSTED;
+import static org.openmuc.jeebus.spine.TestUtilities.*;
+import static org.openmuc.jeebus.spine.xsd.v1.DeviceTypeEnumType.GENERIC;
 
 /**
  * This test is similar to {@link CommunicationTest}, but runs over an actual
@@ -42,50 +49,46 @@ import java.util.concurrent.TimeUnit;
 @Execution(ExecutionMode.SAME_THREAD)
 public class RealCommunicationTest {
 
-    private static final char[] passphrase
-        = "1vny1zlo1x8e1vnw1vn61x8g1zlu1vn4".toCharArray();
+    private static final String SERVICE_DOMAIN = "real-comm-test.";
 
-    // TODO after jship#92 is done: switch these to port 0
-    // in order to dynamically claim some available ephemeral port
-    private static final int port = 2001;
+    public static final String LOCALHOST_0 = "localhost:0";
 
-    private static final int port2 = 2003;
+    private static final ShipConfig serverConf = ShipConfig.getBuilder()
+        .withServerBindAddresses(LOCALHOST_0)
+        .withId("EXAMPLEBRAND-EEB01M3EU-001122334455")
+        .withMDnsServiceInstance("Dishwasher ExampleCompany EEB01M3EU")
+        .withMDnsDomain(SERVICE_DOMAIN)
+        .withCertificateStorage(new KeyStoreCertificateStorage(
+            "test-keystore.jks",
+            "testServer",
+            getPassphrase(),
+            getPassphrase()
+        ))
+        .withCertificateDistinguishedName("CN=example name")
+        .withTrustedSkis("7a936d51b36b812abb872f6d8579c3948ed3852a")
+        .withNetworkInterfaceScanInitialDelay(0)
+        .build();
 
-    private static final String wssPath = "/ship/";
+    private static final ShipConfig clientConf = ShipConfig.getBuilder()
+        .withServerBindAddresses(LOCALHOST_0)
+        .withId("EXAMPLEBRAND-EEB01M3EU-001122334456")
+        .withMDnsServiceInstance("Dishwasher ExampleCompany EEB01M4EU")
+        .withMDnsDomain(SERVICE_DOMAIN)
+        .withCertificateStorage(new KeyStoreCertificateStorage(
+            "test-keystore.jks",
+            "testClient",
+            getPassphrase(),
+            getPassphrase()
+        ))
+        .withCertificateDistinguishedName("CN=example name")
+        .withTrustedSkis("5eacb47f1755ac2e9ddffb86084aaf5a701ac826")
+        .withNetworkInterfaceScanInitialDelay(0)
+        .build();
 
-    private static final String serviceDomain = "local.";
-
-    private static final ShipNodeConfiguration serverConf = new ShipNodeConfiguration(
-        "localhost",
-        port,
-        wssPath,
-        false,
-        "EXAMPLEBRAND-EEB01M3EU-001122334455",
-        serviceDomain,
-        "Dishwasher ExampleCompany EEB01M3EU",
-        "testServer",
-        "test-keystore.jks",
-        passphrase,
-        passphrase,
-        "CN=example name",
-        365
-    );
-    private static final ShipNodeConfiguration clientConf = new ShipNodeConfiguration(
-        "localhost",
-        port2,
-        wssPath,
-        false,
-        "EXAMPLEBRAND-EEB01M3EU-001122334456",
-        serviceDomain,
-        "Dishwasher ExampleCompany EEB01M4EU",
-        "testClient",
-        "test-keystore.jks",
-        passphrase,
-        passphrase,
-        "CN=example name2",
-        365
-    );
-
+    private static char[] getPassphrase() {
+        char[] chars = "1vny1zlo1x8e1vnw1vn61x8g1zlu1vn4".toCharArray();
+        return Arrays.copyOf(chars, chars.length);
+    }
 
     private Communication serverComm;
     Device server;
@@ -97,16 +100,16 @@ public class RealCommunicationTest {
     private Device getGenericServer() {
         return Device
             .getBuilder()
-            .withDeviceType(DeviceTypeEnumType.GENERIC)
+            .withDeviceType(GENERIC)
             .withCommunication(serverComm)
-            .withId(TestUtilities.REMOTE_DEVICE_ADDRESS)
+            .withId(REMOTE_DEVICE_ADDRESS)
             .addEntity()
             .setType(EntityTypeEnumType.GENERIC)
             .addFeature()
             .setRole(RoleType.SERVER)
             .setType(FeatureTypeEnumType.GENERIC)
-            .setFeaturePermission(TestUtilities.ALLOWING_FEATURE_PERMISSION)
-            .addFunction(TestUtilities.ASSERTING_FEATURE_FUNCTION)
+            .setFeaturePermission(ALLOWING_FEATURE_PERMISSION)
+            .addFunction(ASSERTING_FEATURE_FUNCTION)
             .apply()
             .withUseCases()
             .applyToDevice()
@@ -117,15 +120,15 @@ public class RealCommunicationTest {
     private Device getGenericClient() {
         return Device
             .getBuilder()
-            .withDeviceType(DeviceTypeEnumType.GENERIC)
+            .withDeviceType(GENERIC)
             .withCommunication(clientComm)
-            .withId(TestUtilities.LOCAL_DEVICE_ADDRESS)
+            .withId(LOCAL_DEVICE_ADDRESS)
             .addEntity()
             .setType(EntityTypeEnumType.GENERIC)
             .addFeature()
             .setRole(RoleType.CLIENT)
             .setType(FeatureTypeEnumType.GENERIC)
-            .setFeaturePermission(TestUtilities.ALLOWING_FEATURE_PERMISSION)
+            .setFeaturePermission(ALLOWING_FEATURE_PERMISSION)
             .apply()
             .withUseCases()
             .applyToDevice()
@@ -135,17 +138,15 @@ public class RealCommunicationTest {
 
     @BeforeEach
     void setup() {
-        TestUtilities.ASSERTING_FEATURE_FUNCTION.reset();
+        ASSERTING_FEATURE_FUNCTION.reset();
 
         // these SKIs are derived from the keys in test-keystore.jks, which is
         // checked into git, ensuring the SKIs don't change. If the keystore is
         // changed or regenerated for some reason, these SKIs will need to be changed.
         serverComm = new ShipCommunication(serverConf)
-            .withTrustedSkis("7a936d51b36b812abb872f6d8579c3948ed3852a")
-            .withConnectClientsTo(ShipCommunication.ConnectClientsTo.TRUSTED);
+            .withConnectClientsTo(NONE);
         clientComm = new ShipCommunication(clientConf)
-            .withTrustedSkis("5eacb47f1755ac2e9ddffb86084aaf5a701ac826")
-            .withConnectClientsTo(ShipCommunication.ConnectClientsTo.NONE);
+            .withConnectClientsTo(TRUSTED);
 
         server = getGenericServer();
         client = getGenericClient();
@@ -163,15 +164,15 @@ public class RealCommunicationTest {
      * @return whether the server and client have found each other.
      */
     private boolean devicesAreConnected() {
-        return server.getConnectionHandler().getCommunicationAddress(TestUtilities.LOCAL_DEVICE_ADDRESS) != null
-            && client.getConnectionHandler().getCommunicationAddress(TestUtilities.REMOTE_DEVICE_ADDRESS) != null;
+        return server.getConnectionHandler().getCommunicationAddress(LOCAL_DEVICE_ADDRESS) != null
+            && client.getConnectionHandler().getCommunicationAddress(REMOTE_DEVICE_ADDRESS) != null;
     }
 
     @Test
     void testRead() throws ExecutionException, InterruptedException {
         Awaitility.await().atMost(10, TimeUnit.SECONDS).until(this::devicesAreConnected);
         CompletableFuture<RequestResult> future = client.getNodeManagement()
-            .requestRead(TestUtilities.SERVER_FEATURE_ADDRESS, getReadCmd());
+            .requestRead(SERVER_FEATURE_ADDRESS, getReadCmd());
         Assertions.assertEquals(
             "off",
             future.get().getCmd().getActuatorSwitchData().getFunction()
@@ -191,10 +192,10 @@ public class RealCommunicationTest {
         Awaitility.await().atMost(10, TimeUnit.SECONDS).until(this::devicesAreConnected);
         CmdType writeCmd = getWriteCmd();
 
-        TestUtilities.ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
+        ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
         CompletableFuture<RequestResult> writeRequest = client
             .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
-            .requestWrite(TestUtilities.SERVER_FEATURE_ADDRESS, writeCmd);
+            .requestWrite(SERVER_FEATURE_ADDRESS, writeCmd);
         // Write request is denied (binding required)
         ExecutionException e = Assertions.assertThrows(
             ExecutionException.class,
@@ -204,19 +205,19 @@ public class RealCommunicationTest {
             Error.BINDING_NECESSARY,
             ((SpineException) e.getCause()).getError()
         );
-        TestUtilities.ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
+        ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
 
         CompletableFuture<RequestResult> bindingRequest = client
             .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
-            .requestBind(TestUtilities.SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
+            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
         // Wait for binding completion
         bindingRequest.get();
-        TestUtilities.ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
+        ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
         writeRequest = client
             .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
-            .requestWrite(TestUtilities.SERVER_FEATURE_ADDRESS, writeCmd);
+            .requestWrite(SERVER_FEATURE_ADDRESS, writeCmd);
         writeRequest.get();
-        TestUtilities.ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(true);
+        ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(true);
     }
 
     private CmdType getWriteCmd() {
@@ -230,12 +231,12 @@ public class RealCommunicationTest {
     @Test
     void testInvalidOperations() throws SpineException {
         Awaitility.await().atMost(10, TimeUnit.SECONDS).until(this::devicesAreConnected);
-        TestUtilities.ASSERTING_FEATURE_FUNCTION.disable();
+        ASSERTING_FEATURE_FUNCTION.disable();
         CmdType writeCmd = getWriteCmd();
         CmdType readCmd = getReadCmd();
         CompletableFuture<RequestResult> request = client
             .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
-            .requestRead(TestUtilities.SERVER_FEATURE_ADDRESS, readCmd);
+            .requestRead(SERVER_FEATURE_ADDRESS, readCmd);
         ExecutionException e = Assertions.assertThrows(
             ExecutionException.class,
             request::get
@@ -247,7 +248,7 @@ public class RealCommunicationTest {
 
         request = client
             .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
-            .requestWrite(TestUtilities.SERVER_FEATURE_ADDRESS, writeCmd);
+            .requestWrite(SERVER_FEATURE_ADDRESS, writeCmd);
         e = Assertions.assertThrows(ExecutionException.class, request::get);
         Assertions.assertEquals(
             Error.COMMAND_NOT_SUPPORTED,

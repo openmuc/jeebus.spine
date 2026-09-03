@@ -143,6 +143,8 @@ public class Discovery implements Runnable {
 
         deviceAddress = result.getSenderAddress().getDevice();
 
+        LOGGER.info("mapping {} to {}", deviceAddress, communicationAddress);
+
         detailedDiscoveryData = result
             .getCmd()
             .getNodeManagementDetailedDiscoveryData();

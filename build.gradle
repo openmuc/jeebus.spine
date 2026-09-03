@@ -80,6 +80,11 @@ subprojects {
     }
 
     repositories {
+        // central maven snapshot repository
+        maven {
+            name = 'Central Portal Snapshots'
+            url = 'https://central.sonatype.com/repository/maven-snapshots/'
+        }
         // local dependencies as jars in the folder ./dependencies/
         flatDir {
             dirs rootDir.path + '/dependencies'
@@ -101,7 +106,7 @@ subprojects {
 
     dependencies {
         // https://central.sonatype.com/artifact/org.openmuc.jeebus/ship
-        implementation 'org.openmuc.jeebus:ship:2.2.0'
+        implementation 'org.openmuc.jeebus:ship:3.0.0'
         // implementation name: 'ship-2.2.0-SNAPSHOT'
 
         // https://mvnrepository.com/artifact/com.fasterxml.jackson/jackson-bom

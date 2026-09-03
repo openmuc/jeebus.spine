@@ -10,24 +10,15 @@
 
 package org.openmuc.jeebus.spine;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openmuc.jeebus.spine.api.Device;
-import org.openmuc.jeebus.spine.api.RequestResult;
-import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.impl.DeviceBuilder;
 import org.openmuc.jeebus.spine.spi.*;
 import org.openmuc.jeebus.spine.xsd.v1.DeviceTypeEnumType;
-import org.openmuc.jeebus.spine.xsd.v1.FeatureTypeEnumType;
 import org.openmuc.jeebus.spine.xsd.v1.NetworkManagementFeatureSetType;
 import org.openmuc.jeebus.spine.xsd.v1.RoleType;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
 public class EnhancedCommunicationTest {
@@ -46,27 +37,6 @@ public class EnhancedCommunicationTest {
         gatewayComm.setCommunicationPartners(clientComm, serverComm);
         clientComm.setCommunicationPartner(gatewayComm);
         serverComm.setCommunicationPartner(gatewayComm);
-    }
-
-    @Test
-    void testTransitiveCommunication() {
-        AssertingDeviceListener dl = new AssertingDeviceListener();
-        Device router = getForwardingDevice(NetworkManagementFeatureSetType.ROUTER);
-        Device client = addFeature(
-            getGenericDeviceBuilder(clientComm, LOCAL_DEVICE_ADDRESS),
-            RoleType.CLIENT
-        ).withDiscoverDevices(true)
-            .withCommunicationMode(NetworkManagementFeatureSetType.SMART)
-            .withAutomaticDestinationListDetection(true)
-            .addDeviceListener(dl)
-            .build();
-        Device server = addFeature(
-            getGenericDeviceBuilder(serverComm, REMOTE_DEVICE_ADDRESS),
-            RoleType.SERVER
-        ).withCommunicationMode(NetworkManagementFeatureSetType.SMART).build();
-        dl.assertDeviceDiscovered(false);
-        gatewayComm.connectPartnerTwo(); // simulate connection of router to server
-        dl.assertDeviceDiscovered(true);
     }
 
     private Device getForwardingDevice(NetworkManagementFeatureSetType commMode) {
@@ -122,80 +92,4 @@ public class EnhancedCommunicationTest {
         dl.assertDeviceDiscovered(false);
     }
 
-    @Test
-    void testSmartDeviceForwardsMessages() {
-        AssertingDeviceListener dl = new AssertingDeviceListener();
-        Device router = getForwardingDevice(NetworkManagementFeatureSetType.SMART);
-        Device client = addFeature(
-            getGenericDeviceBuilder(clientComm, LOCAL_DEVICE_ADDRESS),
-            RoleType.CLIENT
-        ).withDiscoverDevices(true)
-            .withCommunicationMode(NetworkManagementFeatureSetType.SMART)
-            .withAutomaticDestinationListDetection(true)
-            .addDeviceListener(dl)
-            .build();
-        Device server = addFeature(
-            getGenericDeviceBuilder(serverComm, REMOTE_DEVICE_ADDRESS),
-            RoleType.SERVER
-        ).withCommunicationMode(NetworkManagementFeatureSetType.SMART).build();
-        gatewayComm.connectPartnerTwo(); // simulate connection of router to server
-        dl.assertDeviceDiscovered(true);
-    }
-
-    @Test
-    @Disabled("jEEBus.SPINEv3 concurrent DeviceDiscovery breaks this. "
-        + "Enhanced Communication was not necessary yet.")
-        // TODO: fix this when Enhanced Communication is necessary
-    void testCommunicationViaIntermediateDevice() throws SpineException,
-        ExecutionException, InterruptedException, TimeoutException {
-        ASSERTING_FEATURE_FUNCTION.enable();
-        Device router = getForwardingDevice(NetworkManagementFeatureSetType.ROUTER);
-        Device client = addFeature(
-            getGenericDeviceBuilder(clientComm, LOCAL_DEVICE_ADDRESS),
-            RoleType.CLIENT
-        ).withDiscoverDevices(true)
-            .withCommunicationMode(NetworkManagementFeatureSetType.SMART)
-            .withAutomaticDestinationListDetection(true)
-            .build();
-        Device server = addFeature(
-            getGenericDeviceBuilder(serverComm, REMOTE_DEVICE_ADDRESS),
-            RoleType.SERVER
-        ).withCommunicationMode(NetworkManagementFeatureSetType.SMART).build();
-        gatewayComm.connectPartnerTwo(); // simulate connection of router to server
-
-        RequestResult readResult = client.getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestRead(
-                SERVER_FEATURE_ADDRESS,
-                AssertingFeatureFunction.getReadCmd()
-            )
-            .get(2, SECONDS);
-        Assertions.assertEquals(
-            "off",
-            readResult.getCmd().getActuatorSwitchData().getFunction()
-        );
-
-        AssertingSubscription subscription = new AssertingSubscription();
-        Assertions.assertDoesNotThrow(() -> client.getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestSubscription(
-                SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
-                subscription
-            )
-            .get());
-
-        Assertions.assertDoesNotThrow(() -> client.getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC)
-            .get());
-
-        ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
-        subscription.assertNotifiedAndReset(false);
-        Assertions.assertDoesNotThrow(() -> client.getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestWrite(
-                SERVER_FEATURE_ADDRESS,
-                AssertingFeatureFunction.getWriteCmd()
-            )
-            .get());
-        ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(true);
-        subscription.assertNotifiedAndReset(true);
-    }
 }

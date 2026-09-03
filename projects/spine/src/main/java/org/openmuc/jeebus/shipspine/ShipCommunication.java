@@ -11,18 +11,32 @@
 package org.openmuc.jeebus.shipspine;
 
 import org.openmuc.jeebus.ship.api.*;
+import org.openmuc.jeebus.ship.node.ShipConfig;
+import org.openmuc.jeebus.ship.util.ShipUtilities;
 import org.openmuc.jeebus.spine.impl.parser.MessageParser;
 import org.openmuc.jeebus.spine.spi.Communication;
 import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.openmuc.jeebus.spine.utils.SpineUtilities;
+import org.openmuc.jeebus.spine.xsd.v1.CmdClassifierType;
 import org.openmuc.jeebus.spine.xsd.v1.DatagramType;
+import org.openmuc.jeebus.spine.xsd.v1.FeatureAddressType;
+import org.openmuc.jeebus.spine.xsd.v1.HeaderType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Objects;
-import java.util.Set;
+import java.net.Inet4Address;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
+import static org.openmuc.jeebus.ship.api.DisconnectReason.ERROR;
+import static org.openmuc.jeebus.ship.util.ShipUtilities.beautify;
+import static org.openmuc.jeebus.ship.util.ShipUtilities.safelyParseSocketAddress;
 import static org.openmuc.jeebus.shipspine.ShipCommunication.ConnectClientsTo.ALL;
 import static org.openmuc.jeebus.shipspine.ShipCommunication.ConnectClientsTo.TRUSTED;
 
@@ -47,104 +61,25 @@ public class ShipCommunication extends Communication {
 
     private static final Logger LOGGER
         = LoggerFactory.getLogger(ShipCommunication.class);
-    private final ConnectionHandler connectionHandler;
-    private final ShipNodeConfiguration nodeConf;
-    private boolean connected;
+
+    private final ShipConnectionHandler shipConnectionHandler
+        = new ShipConnectionHandler();
+    private final ShipConfig shipConfig;
     private Ship ship;
-    private Set<String> skisToTrust = Set.of();
-    private boolean autoAcceptMode = false;
+    private final Map<String, Set<ShipService>> serviceMap
+        = new ConcurrentSkipListMap<>();
+
+    private boolean connected;
     private ConnectClientsTo connectClientsTo = ALL;
 
-    public ShipCommunication(ShipNodeConfiguration nodeConf) {
-        this.nodeConf = nodeConf;
-        connectionHandler = new ConnectionHandler() {
-
-            @Override
-            public void onMessageReceived(
-                byte[] shipMessage,
-                byte[] payload,
-                ShipConnectionInterface shipConnection
-            ) {
-                DatagramType datagram = MessageParser.fromJson(payload);
-
-                LOGGER.debug(
-                    "receiving {} {} from {}",
-                    datagram.getHeader().getCmdClassifier().value(),
-                    SpineUtilities.simplifyCmds(datagram),
-                    datagram.getHeader().getAddressSource().getDevice()
-                );
-
-                ShipCommunication.this.onMessageReceived(
-                    new ShipSpineConnection(shipConnection),
-                    datagram
-                );
-            }
-
-            @Override
-            public void onDisconnect(
-                DisconnectReason disconnectReason,
-                ShipConnectionInterface shipConnectionInterface
-            ) {
-                if (disconnectReason.equals(DisconnectReason.ERROR)) {
-                    LOGGER.error(
-                        "Connection to {} lost!",
-                        shipConnectionInterface.getRemoteAddress()
-                    );
-                }
-                device
-                    .getConnectionHandler()
-                    .closeConnection(shipConnectionInterface.getRemoteAddress());
-                device
-                    .getNodeManagement()
-                    .notifyDisconnect(disconnectReason, shipConnectionInterface);
-            }
-
-            @Override
-            public void serviceAdded(String ip, String ski) {
-                if (ski.equals(ship.getOwnSki())) {
-                    LOGGER.trace("Detected own SHIP service, ignoring it.");
-                }
-                else {
-                    LOGGER.debug(
-                        "Ship service with address {} detected. Public key: {}",
-                        ip,
-                        ski
-                    );
-
-                    if(
-                        connectClientsTo == ALL
-                        || connectClientsTo == TRUSTED && skisToTrust.contains(ski)
-                    ) {
-                        device.getConnectionHandler().newConnection(ip);
-                    }
-                }
-            }
-
-            @Override
-            public void serviceRemoved(String ip) {
-                LOGGER.debug("Ship service with address {} removed.", ip);
-                removeDevice(ip);
-            }
-
-            @Override
-            public void connectionDataExchangeEnabled(String ip) {
-                addDevice(ip);
-            }
-        };
+    public ShipCommunication(ShipConfig shipConfig) {
+        this.shipConfig = shipConfig;
     }
 
     @Override
     public void connect() {
-        LOGGER.trace("Connecting to SHIP");
-        ship = new Ship(nodeConf, connectionHandler);
-
-        skisToTrust.forEach(ship::addTrustedSki);
-
-        if (autoAcceptMode) {
-            ship.setAutoAcceptMode();
-        }
-
-        ship.setClientConnectedCB(ship::runConnectionDataPreparation);
+        LOGGER.info("Connecting SPINE to SHIP");
+        ship = new Ship(shipConfig, shipConnectionHandler);
 
         connected = true;
     }
@@ -153,7 +88,7 @@ public class ShipCommunication extends Communication {
     public void disconnect() {
         if (ship != null) {
             try {
-                ship.shutDown();
+                ship.close();
             }
             catch (IOException e) {
                 LOGGER.trace("Error while shutting down SHIP", e);
@@ -169,8 +104,98 @@ public class ShipCommunication extends Communication {
 
     @Override
     public SpineConnection open(String address) {
-        LOGGER.trace("Opening connection to {} with SHIP", address);
-        return new ShipSpineConnection(ship.openConnection(address));
+        try {
+            return connectToFirstAvailable(
+                Collections.singleton(safelyParseSocketAddress(address)).iterator(),
+                "ship",
+                null,
+                null
+            )
+                .thenApply(ShipSpineConnection::new)
+                .whenComplete(this::handleConnectionFuture)
+                .get();
+        }
+        catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public CompletableFuture<? extends SpineConnection> openConnection(
+        String communicationAddress
+    ) {
+
+        LOGGER.trace("Opening connection to {} with SHIP", communicationAddress);
+
+        if (serviceMap.containsKey(communicationAddress)) {
+
+            ShipService someService = serviceMap
+                .get(communicationAddress)
+                .stream()
+                .findAny()
+                .orElseThrow();
+
+            Iterator<InetSocketAddress> sockets = serviceMap
+                .get(communicationAddress)
+                .stream()
+                .map(ShipService::getSocketAddresses)
+                .flatMap(Collection::stream)
+                .distinct()
+                // Try Inet4Addresses first
+                .sorted((left, right) -> Boolean.compare(
+                    right.getAddress() instanceof Inet4Address,
+                    left.getAddress() instanceof Inet4Address
+                ))
+                .iterator();
+
+            return connectToFirstAvailable(
+                sockets,
+                someService.getPath(),
+                someService.getShipId(),
+                someService.getSki()
+            )
+                .thenApply(ShipSpineConnection::new)
+                .whenComplete((this::handleConnectionFuture));
+        }
+        else {
+            // TODO maybe try and filter the current SHIP services
+            //  although they should have been reported...
+            throw new IllegalStateException(
+                "Opening connections to unidentified SHIP devices is not supported."
+            );
+        }
+    }
+
+    private CompletableFuture<ShipConnectionInterface> connectToFirstAvailable(
+        Iterator<InetSocketAddress> sockets,
+        String path,
+        String expectedShipId,
+        String expectedSki
+    ) {
+        if (!sockets.hasNext()) {
+            return CompletableFuture.failedFuture(
+                new IllegalStateException(
+                    "None of the sockets in their SHIP service yielded a successful connection."
+                        +expectedShipId
+                )
+            );
+        }
+
+        InetSocketAddress socket = sockets.next();
+
+        return ship.openConnection(socket, path, expectedShipId, expectedSki)
+            .handle((connection, throwable) -> {
+                if (throwable == null && connection != null) {
+                    return CompletableFuture.completedFuture(connection);
+                }
+                LOGGER.warn(
+                    "Could not connect to {}. Trying the next socket if available.",
+                    beautify(socket)
+                );
+                LOGGER.info("Exception was:", throwable);
+                return connectToFirstAvailable(sockets, path, expectedShipId, expectedSki);
+            })
+            .thenCompose(Function.identity());
     }
 
     /**
@@ -182,46 +207,6 @@ public class ShipCommunication extends Communication {
     }
 
     /**
-     * @param skis
-     *     a collection of SKIs of remote SHIP devices to trust
-     * @return the updated {@link ShipCommunication}
-     */
-    public ShipCommunication withTrustedSkis(String... skis) {
-        this.skisToTrust = Set.of(skis);
-        if (Objects.nonNull(ship)) {
-            skisToTrust.forEach(ship::addTrustedSki);
-        }
-        return this;
-    }
-
-    /**
-     * @param skis
-     *     a collection of SKIs of remote SHIP devices to trust
-     * @return the updated {@link ShipCommunication}
-     */
-    public ShipCommunication withTrustedSkis(Set<String> skis) {
-        this.skisToTrust = skis;
-        if (Objects.nonNull(ship)) {
-            skisToTrust.forEach(ship::addTrustedSki);
-        }
-        return this;
-    }
-
-    /**
-     * @param autoAcceptMode
-     *     if true, enables the auto accept mode on the SHIP server
-     * @return the updated {@link ShipCommunication}
-     * @see Ship#setAutoAcceptMode()
-     */
-    public ShipCommunication withAutoAcceptMode(boolean autoAcceptMode) {
-        this.autoAcceptMode = autoAcceptMode;
-        if (Objects.nonNull(ship) && autoAcceptMode) {
-            ship.setAutoAcceptMode();
-        }
-        return this;
-    }
-
-    /**
      * @param connectClientsTo
      *     determines which remote SHIP servers to connect SHIP clients to
      * @return the updated {@link ShipCommunication}
@@ -229,5 +214,116 @@ public class ShipCommunication extends Communication {
     public ShipCommunication withConnectClientsTo(ConnectClientsTo connectClientsTo) {
         this.connectClientsTo = connectClientsTo;
         return this;
+    }
+
+    private void handleConnectionFuture(
+        ShipSpineConnection connection,
+        Throwable error
+    ) {
+        if (error == null && connection != null) {
+            device.getConnectionHandler().registerConnection(connection);
+            addDevice(connection.getCommunicationAddress());
+        }
+    }
+
+    private class ShipConnectionHandler implements ConnectionHandler {
+
+        @Override
+        public void onMessageReceived(
+            byte[] shipMessage,
+            byte[] payload,
+            ShipConnectionInterface shipConnection
+        ) {
+            DatagramType datagram = MessageParser.fromJson(payload);
+
+            LOGGER.debug(
+                "receiving {} {} from {}",
+                Optional
+                    .ofNullable(datagram)
+                    .map(DatagramType::getHeader)
+                    .map(HeaderType::getCmdClassifier)
+                    .map(CmdClassifierType::value)
+                    .orElse(null),
+                SpineUtilities.simplifyCmds(datagram),
+                Optional
+                    .ofNullable(datagram)
+                    .map(DatagramType::getHeader)
+                    .map(HeaderType::getAddressSource)
+                    .map(FeatureAddressType::getDevice)
+                    .orElse(null)
+            );
+
+            if (datagram != null) {
+                ShipCommunication.super.onMessageReceived(
+                    new ShipSpineConnection(shipConnection),
+                    datagram
+                );
+            }
+        }
+
+        @Override
+        public void onDisconnect(
+            DisconnectReason disconnectReason,
+            ShipConnectionInterface shipConnectionInterface
+        ) {
+            if (disconnectReason.equals(ERROR)) {
+                LOGGER.error(
+                    "Connection to {} lost!",
+                    shipConnectionInterface.getRemoteId()
+                );
+            }
+            device
+                .getConnectionHandler()
+                .closeConnection(shipConnectionInterface.getRemoteId());
+            device
+                .getNodeManagement()
+                .notifyDisconnect(disconnectReason, shipConnectionInterface);
+        }
+
+        @Override
+        public void serviceAdded(ShipService service) {
+            if (!Objects.equals(service.getSki(), ship.getOwnSki())) {
+
+                if (serviceMap.containsKey(service.getShipId())) {
+                    serviceMap.get(service.getShipId()).add(service);
+                }
+                else {
+                    serviceMap.put(
+                        service.getShipId(),
+                        new ConcurrentSkipListSet<>(Collections.singleton(service))
+                    );
+                }
+
+                if (connectClientsTo == ALL
+                    || connectClientsTo == TRUSTED
+                    && ship.trusts(service.getSki())) {
+
+                    device
+                        .getConnectionHandler()
+                        .newConnection(service.getShipId());
+                }
+            }
+        }
+
+        @Override
+        public void serviceRemoved(ShipService service) {
+
+            if (serviceMap.containsKey(service.getShipId())) {
+                serviceMap.get(service.getShipId()).remove(service);
+
+                if (serviceMap.get(service.getShipId()).isEmpty()) {
+                    removeDevice(service.getShipId());
+                }
+            }
+        }
+
+        @Override
+        public void clientConnected(final ShipConnectionInterface connection) {
+            device
+                .getConnectionHandler()
+                .registerConnection(new ShipSpineConnection(connection));
+
+            addDevice(connection.getRemoteId());
+        }
     }
 }

@@ -137,7 +137,8 @@ class DeviceImpl implements EntityParent, Device {
             && !datagram.getHeader()
             .getAddressDestination()
             .getDevice()
-            .equals(address.getDevice())) {
+            .equals(address.getDevice()))
+        {
             forwardDatagram(datagram);
         }
         else {

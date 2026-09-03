@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.1.0] - 
+
+### Changed
+
+- update jEEBus.SHIP dependency to 3.0.0
+  - replace `ShipCommunication` constructor parameter with a `ShipConfig` object
+- set `connectClientsTo` to `TRUSTED` by default (was `ALL`)
+- deprecate `ConnectionHandler` to be renamed to `ConnectionMapper`
+- deprecate `Communication#open` to be replaced by `Communication#openConnection`
+  with clearer handling of concurrency
+
 ## [4.0.1] - 2026-05-26
 
 ### Changed
