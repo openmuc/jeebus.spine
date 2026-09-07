@@ -96,7 +96,6 @@ class ConnectionHandlerImpl implements ConnectionHandler {
         }
     }
 
-    // FIXME: remove from interface again
     @Override
     public String getDeviceAddress(String communicationAddress) {
         for (Map.Entry<String, String> addressMapping : addressMap.entrySet()) {
@@ -114,7 +113,7 @@ class ConnectionHandlerImpl implements ConnectionHandler {
     public void shutdown() {
         synchronized (this) {
             for (SpineConnection conn : connections.values()) {
-                conn.close();
+                closeConnection(conn.getCommunicationAddress());
             }
             connections.clear();
             addressMap.clear();

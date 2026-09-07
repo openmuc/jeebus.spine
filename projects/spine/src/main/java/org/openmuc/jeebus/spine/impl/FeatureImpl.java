@@ -19,13 +19,13 @@ import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.openmuc.jeebus.spine.spi.SpineSubscription;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingRequestCallType.BindingRequest;
 import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.PENDING;
 import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.SUCCESSFUL;
@@ -35,10 +35,11 @@ class FeatureImpl implements Feature {
     private static final Logger LOGGER = LoggerFactory.getLogger(Feature.class);
     private final Map<String, FeatureFunction> functions = new HashMap<>();
     private final FeatureAddressType address = new FeatureAddressType();
+
     private final List<FeatureAddressType> subscribers = new ArrayList<>();
     private final Map<String, SubscriptionWrapper> subscriptions
         = new ConcurrentHashMap<>();
-    private final List<String> bindings = new ArrayList<>();
+
     private EntityImpl parent;
     private FeatureTypeEnumType featureType;
     private RoleType role;
@@ -49,6 +50,10 @@ class FeatureImpl implements Feature {
     private NetworkManagementStateChangeType lastStateChange = null;
     private String minimumTrustLevel = null;
     private FeatureWrapper featureWrapper;
+
+    private final Set<String> bindings = new ConcurrentSkipListSet<>();
+    private final ExecutorService bindingListenerExecutor
+        = Executors.newCachedThreadPool();
 
     private static final Set<CmdClassifierType> ACKNOWLEDGEMENT_REQUEST_WHITELIST
         = Set.of(WRITE, CALL);
@@ -108,7 +113,7 @@ class FeatureImpl implements Feature {
         this.bindingListeners.add(listener);
     }
 
-    public boolean bind(NodeManagementBindingRequestCallType.BindingRequest bindingRequest) {
+    public boolean bind(BindingRequest bindingRequest) {
         try {
             checkTrustLevel(bindingRequest.getClientAddress());
         }
@@ -124,10 +129,11 @@ class FeatureImpl implements Feature {
 
             // Doing this in parallel since we don't want to get stuck here
             bindingListeners
-                .parallelStream()
-                .forEach(listener -> listener.onBind(
-                    (NodeManagementBindingRequestCallType.BindingRequest) bindingRequest.clone()
-                ));
+                .forEach(listener ->
+                    bindingListenerExecutor.execute(
+                        () -> listener.onBind(
+                            (BindingRequest) bindingRequest.clone()))
+                );
 
             LOGGER.debug("Binding request accepted");
             return true;
@@ -469,10 +475,8 @@ class FeatureImpl implements Feature {
 
         DatagramType datagram = completeDatagram(address, cmd, cmdClassifier);
 
-        CompletableFuture<RequestResult> future
-            = ((DeviceImpl) getDevice()).newRequest(datagram
-            .getHeader()
-            .getMsgCounter());
+        CompletableFuture<RequestResult> future= ((DeviceImpl) getDevice())
+            .newRequest(datagram);
 
         send(address, communicationAddress, datagram);
 
@@ -666,35 +670,49 @@ class FeatureImpl implements Feature {
         FeatureAddressType address,
         FeatureTypeEnumType featureType
     ) {
-        NodeManagementImpl nodeManagement
-            = getNodeManagement();
+        NodeManagementImpl nodeManagement = getNodeManagement();
+
         CmdType cmd = nodeManagement.getBindingRequest(
             getAddress(),
             address,
             featureType
         );
+
         return request(
             nodeManagement.getNodeManagementAddress(address.getDevice()),
             cmd,
             CALL,
             null
-        );
+        ).whenComplete((result, error) -> {
+            if (error == null && result != null) {
+                BindingRequest request = cmd
+                    .getNodeManagementBindingRequestCall()
+                    .getBindingRequest();
+
+                this.getNodeManagement().getFunction(BindingDataFunction.class)
+                    .orElseThrow().addBinding(request);
+            }
+        });
     }
 
     @Override
-    public void releaseSubscription(FeatureAddressType address) {
-        subscriptions.remove(addressToString(address));
-        NodeManagementImpl nodeManagement
-            = getNodeManagement();
-        nodeManagement.sendSubscriptionRelease(getAddress(), address);
+    public void releaseSubscription(FeatureAddressType serverAddress) {
+        subscriptions.remove(addressToString(serverAddress));
+
+        // Let's not start connections just to communicate a subscription release
+        if(getDevice().getConnectionHandler().getCommunicationAddress(
+            serverAddress.getDevice()) != null
+        ) {
+            getNodeManagement().sendSubscriptionRelease(getAddress(), serverAddress);
+        }
     }
 
     @Override
-    public void releaseSubscriber(FeatureAddressType subscriberAddress) {
-        removeSubscriber(subscriberAddress);
+    public void releaseSubscriber(FeatureAddressType clientAddress) {
+        removeSubscriber(clientAddress);
         NodeManagementImpl nodeManagement
             = getNodeManagement();
-        nodeManagement.sendSubscriptionRelease(subscriberAddress, getAddress());
+        nodeManagement.sendSubscriptionRelease(clientAddress, getAddress());
     }
 
     @Override
@@ -909,27 +927,20 @@ class FeatureImpl implements Feature {
         return null;
     }
 
+    SubscriptionWrapper getSubscription(FeatureAddressType address) {
+        return this.subscriptions.get(addressToString(address));
+    }
+
     @Override
     public void shutdown() {
         for (FeatureFunction function : functions.values()) {
             function.close();
         }
+        bindingListenerExecutor.shutdown();
     }
 
     @Override
     public String toString() {
-        return "FeatureImpl{" +
-                "functions=" + functions +
-                ", address=" + address +
-                ", subscribers=" + subscribers +
-                ", featureType=" + featureType +
-                ", role=" + role +
-                ", label='" + label + '\'' +
-                ", description='" + description + '\'' +
-                ", group='" + group + '\'' +
-                ", minimumTrustLevel='" + minimumTrustLevel + '\'' +
-                ", featurePermission=" + featurePermission +
-                ", bindings=" + bindings +
-                '}';
+        return role+" "+featureType+" at "+addressToString(getAddress());
     }
 }

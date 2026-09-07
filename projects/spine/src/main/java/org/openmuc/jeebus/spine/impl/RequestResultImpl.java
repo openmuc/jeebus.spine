@@ -19,8 +19,8 @@ import org.openmuc.jeebus.spine.xsd.v1.ResultDataType;
 class RequestResultImpl implements RequestResult {
     private final DatagramType datagram;
 
-    RequestResultImpl(DatagramType d) {
-        datagram = d;
+    RequestResultImpl(DatagramType datagram) {
+        this.datagram = datagram;
     }
 
     @Override

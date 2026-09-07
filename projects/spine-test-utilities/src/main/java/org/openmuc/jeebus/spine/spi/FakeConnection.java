@@ -18,35 +18,44 @@ import org.slf4j.LoggerFactory;
 import static org.openmuc.jeebus.spine.utils.SpineUtilities.simplifyDatagram;
 
 public class FakeConnection implements SpineConnection {
-    private final Communication partner;
-    private final Communication device;
+    private final FakeCommunication partner;
+    private final FakeCommunication us;
     private static final Logger LOGGER
         = LoggerFactory.getLogger(FakeConnection.class);
+    private boolean isUp;
 
-    public FakeConnection(Communication partner, Communication device) {
-        this.partner = partner;
-        this.device = device;
+    public FakeConnection(Communication partner, Communication us) {
+        this.partner = (FakeCommunication) partner;
+        this.us = (FakeCommunication) us;
+        this.isUp = true;
     }
 
     @Override
     public void sendMessage(DatagramType datagram) {
+        if(isUp) {
+            LOGGER.debug(simplifyDatagram(datagram));
+            LOGGER.trace(
+                "Sending message:\n{}",
+                new String(MessageParser.toJson(datagram))
+            );
 
-        LOGGER.debug(simplifyDatagram(datagram));
-        LOGGER.trace(
-            "Sending message:\n{}",
-            new String(MessageParser.toJson(datagram))
-        );
-
-        partner.onMessageReceived(new FakeConnection(device, partner), datagram);
+            partner.onMessageReceived(new FakeConnection(us, partner), datagram);
+        }
     }
 
     @Override
     public String getCommunicationAddress() {
-        return ((FakeCommunication) partner).address;
+        return partner.getAddress();
     }
 
     @Override
     public void close() {
-
+        this.isUp = false;
+        LOGGER.info(
+            "Connection to {} was closed",
+            partner.getAddress()
+        );
+        us.removeDevice(partner.getAddress());
+        partner.removeDevice(us.getAddress());
     }
 }

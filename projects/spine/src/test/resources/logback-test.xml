@@ -84,7 +84,7 @@
 
     <logger name="org.openmuc.jeebus" level="INFO"/>
     <logger name="org.openmuc.jeebus.ship" level="INFO"/>
-    <logger name="org.openmuc.jeebus.spine" level="INFO"/>
+    <logger name="org.openmuc.jeebus.spine" level="DEBUG"/>
 
     <!-- EEBUS MESSAGE LOGGING -->
     <!-- Set to DEBUG to enable logging of all messages transmitted with SHIP -->

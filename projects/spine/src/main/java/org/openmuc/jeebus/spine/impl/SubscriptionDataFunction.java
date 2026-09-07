@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.impl;
 
+import org.openmuc.jeebus.spine.api.Feature;
 import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
@@ -102,10 +103,10 @@ class SubscriptionDataFunction extends FeatureFunction {
         Set<SubscriptionEntry> newEntryList = new HashSet<>();
         Set<SubscriptionEntry> deletedEntryList = new HashSet<>();
         String remoteDeviceId;
-        if (subscriptionDelete
-            .getClientAddress()
-            .getDevice()
-            .equals(feature.getDevice().getAddress().getDevice())) {
+        if (Objects.equals(
+            subscriptionDelete.getClientAddress().getDevice(),
+            feature.getDevice().getAddress().getDevice()
+        )) {
             remoteDeviceId = subscriptionDelete.getServerAddress().getDevice();
         }
         else {
@@ -177,8 +178,32 @@ class SubscriptionDataFunction extends FeatureFunction {
         return subscriptionDeletes;
     }
 
+    void removeSubscription(String deviceAddress) {
+        Optional.ofNullable(subscriptions.remove(deviceAddress))
+            .ifPresent(entries -> entries.forEach(this::releaseClientSubscription));
+    }
+
+    private void releaseClientSubscription(SubscriptionEntry subscription) {
+        try {
+            this.feature.getDevice().getFeature(subscription.getClientAddress())
+                .releaseSubscription(subscription.getServerAddress());
+        }
+        catch (SpineException e) {
+            // if there is no such feature on our device we do not care
+        }
+    }
+
     @Override
     public void close() {
         // do nothing
+    }
+
+    private Feature getClientFeature(FeatureAddressType address) {
+        try {
+            return this.feature.getDevice().getFeature(address);
+        }
+        catch (SpineException e) {
+            return null;
+        }
     }
 }

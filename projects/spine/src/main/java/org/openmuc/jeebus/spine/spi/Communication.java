@@ -99,8 +99,22 @@ public abstract class Communication {
         device.deviceDetected(communicationAddress);
     }
 
-    public void removeDevice(String address) {
-        device.getNodeManagement().removeAddressMapping(address);
-        device.getConnectionHandler().removeAddressMapping(address);
+    public void removeDevice(String communicationAddress) {
+
+        String deviceAddress = device
+            .getConnectionHandler()
+            .getDeviceAddress(communicationAddress);
+
+        device
+            .getConnectionHandler()
+            .closeConnection(communicationAddress);
+
+        device.getConnectionHandler().removeAddressMapping(communicationAddress);
+
+        device
+            .getNodeManagement()
+            .notifyDisconnect(deviceAddress);
+
+        device.getNodeManagement().removeAddressMapping(communicationAddress);
     }
 }

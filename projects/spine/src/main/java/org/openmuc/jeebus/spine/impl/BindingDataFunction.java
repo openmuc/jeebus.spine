@@ -14,12 +14,15 @@ import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingDataType.BindingEntry;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingDeleteCallType.BindingDelete;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingRequestCallType.BindingRequest;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 class BindingDataFunction extends FeatureFunction {
-    private final Map<String, List<NodeManagementBindingDataType.BindingEntry>>
+    private final Map<String, Set<BindingEntry>>
         bindings = new ConcurrentHashMap<>();
 
     protected BindingDataFunction() {
@@ -28,7 +31,10 @@ class BindingDataFunction extends FeatureFunction {
     }
 
     @Override
-    public CmdType read(FilterType filter, FeatureAddressType sourceAddress) {
+    public CmdType read(
+        FilterType filter,
+        FeatureAddressType sourceAddress
+    ) {
         CmdType cmd = new CmdType();
 
         NodeManagementBindingDataType bindingData
@@ -37,7 +43,7 @@ class BindingDataFunction extends FeatureFunction {
             .getBindingEntry()
             .addAll(bindings.getOrDefault(
                 sourceAddress.getDevice(),
-                Collections.emptyList()
+                Collections.emptySet()
             ));
 
         cmd.setNodeManagementBindingData(bindingData);
@@ -55,35 +61,30 @@ class BindingDataFunction extends FeatureFunction {
         throw new UnsupportedOperationException();
     }
 
-    void addBinding(NodeManagementBindingRequestCallType.BindingRequest bindingRequest) {
-        NodeManagementBindingDataType.BindingEntry bindingEntry
-            = new NodeManagementBindingDataType.BindingEntry();
+    void addBinding(BindingRequest bindingRequest) {
+        BindingEntry bindingEntry = new BindingEntry();
         bindingEntry.setClientAddress(bindingRequest.getClientAddress());
         bindingEntry.setServerAddress(bindingRequest.getServerAddress());
 
         String remoteDeviceId;
-        if (bindingRequest
-            .getClientAddress()
-            .getDevice()
-            .equals(feature.getDevice().getAddress().getDevice())) {
+        if (Objects.equals(
+            bindingRequest.getClientAddress().getDevice(),
+            feature.getDevice().getAddress().getDevice()
+        )) {
             remoteDeviceId = bindingRequest.getServerAddress().getDevice();
         }
         else {
             remoteDeviceId = bindingRequest.getClientAddress().getDevice();
         }
-        List<NodeManagementBindingDataType.BindingEntry> entries =
-                bindings.computeIfAbsent(remoteDeviceId, _k -> Collections.synchronizedList(new ArrayList<>()));
-        synchronized (entries) {
-            entries.add(bindingEntry);
+        if(!bindings.containsKey(remoteDeviceId)) {
+            bindings.put(remoteDeviceId, new HashSet<>());
         }
+        bindings.get(remoteDeviceId).add(bindingEntry);
     }
 
-    void deleteBinding(NodeManagementBindingDeleteCallType.BindingDelete bindingDelete) throws
-        SpineException {
-        List<NodeManagementBindingDataType.BindingEntry> newEntryList
-            = new ArrayList<>();
-        List<NodeManagementBindingDataType.BindingEntry> deletedEntryList
-            = new ArrayList<>();
+    void deleteBinding(BindingDelete bindingDelete) throws SpineException {
+        Set<BindingEntry> newEntries = new HashSet<>();
+        Set<BindingEntry> deletedEntries = new HashSet<>();
         String remoteDeviceId;
         if (bindingDelete
             .getClientAddress()
@@ -94,54 +95,49 @@ class BindingDataFunction extends FeatureFunction {
         else {
             remoteDeviceId = bindingDelete.getClientAddress().getDevice();
         }
-        for (NodeManagementBindingDataType.BindingEntry entry : bindings.getOrDefault(
+        for (BindingEntry entry : bindings.getOrDefault(
             remoteDeviceId,
-            Collections.emptyList()
+            Collections.emptySet()
         )) {
             if (matchAddress(
                 entry.getServerAddress(),
                 bindingDelete.getServerAddress()
             ) && matchAddress(
                 entry.getClientAddress(), bindingDelete.getClientAddress())) {
-                deletedEntryList.add(entry);
+                deletedEntries.add(entry);
             }
             else {
-                newEntryList.add(entry);
+                newEntries.add(entry);
             }
         }
-        bindings.put(remoteDeviceId, newEntryList);
+        bindings.put(remoteDeviceId, newEntries);
 
-        for (NodeManagementBindingDataType.BindingEntry entry : deletedEntryList) {
-            if (entry
-                .getServerAddress()
-                .getDevice()
-                .equals(feature.getDevice().getAddress().getDevice())) {
-                ((FeatureImpl) feature
-                    .getDevice()
+        for (BindingEntry entry : deletedEntries) {
+            if (Objects.equals(
+                entry.getServerAddress().getDevice(),
+                feature.getDevice().getAddress().getDevice()
+            )) {
+                ((FeatureImpl) feature.getDevice()
                     .getFeature(entry.getServerAddress())).removeBinding(
                     entry.getClientAddress());
             }
         }
     }
 
-    Map<String, List<NodeManagementBindingDeleteCallType.BindingDelete>> deleteBindings(
+    Map<String, Set<BindingDelete>> deleteBindings(
         FeatureAddressType featureAddress
     ) {
-        Map<String, List<NodeManagementBindingDeleteCallType.BindingDelete>>
-            bindingDeletions = new HashMap<>();
-        for (Map.Entry<String, List<NodeManagementBindingDataType.BindingEntry>> bindingEntries : bindings.entrySet()) {
-            List<NodeManagementBindingDeleteCallType.BindingDelete> releasedBindings
-                = new ArrayList<>();
-            List<NodeManagementBindingDataType.BindingEntry> newBindingEntries
-                = new ArrayList<>();
-            for (NodeManagementBindingDataType.BindingEntry binding : bindingEntries.getValue()) {
+        Map<String, Set<BindingDelete>> bindingDeletions = new HashMap<>();
+        for (Map.Entry<String, Set<BindingEntry>> bindingEntries : bindings.entrySet()) {
+            Set<BindingDelete> releasedBindings = new HashSet<>();
+            Set<BindingEntry> newBindingEntries = new HashSet<>();
+            for (BindingEntry binding : bindingEntries.getValue()) {
                 if (matchAddress(binding.getClientAddress(), featureAddress)
                     || matchAddress(
                     binding.getServerAddress(),
                     featureAddress
                 )) {
-                    NodeManagementBindingDeleteCallType.BindingDelete bindingDelete
-                        = new NodeManagementBindingDeleteCallType.BindingDelete();
+                    BindingDelete bindingDelete = new BindingDelete();
                     bindingDelete.setServerAddress(binding.getServerAddress());
                     bindingDelete.setClientAddress(binding.getClientAddress());
                     releasedBindings.add(bindingDelete);

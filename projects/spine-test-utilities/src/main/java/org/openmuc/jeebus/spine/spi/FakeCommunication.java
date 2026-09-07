@@ -10,13 +10,19 @@
 
 package org.openmuc.jeebus.spine.spi;
 
+import org.openmuc.jeebus.spine.api.Device;
+
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 
 public class FakeCommunication extends Communication {
-    final String address;
+    private final String address;
     private FakeCommunication partner;
     private boolean discoveryEnabled;
-    private boolean connected = false;
+    protected boolean connected = false;
+    private final Map<String, FakeConnection> connections = new ConcurrentHashMap<>();
 
     public FakeCommunication(String address) {
         this.address = address;
@@ -26,7 +32,7 @@ public class FakeCommunication extends Communication {
     public void connect() {
         if (discoveryEnabled) {
             partner.addDevice(address);
-            addDevice(partner.address);
+            addDevice(partner.getAddress());
         }
         connected = true;
     }
@@ -43,14 +49,24 @@ public class FakeCommunication extends Communication {
 
     @Override
     public SpineConnection open(String address) {
-        return new FakeConnection(partner, this);
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public CompletableFuture<? extends SpineConnection> openConnection(
         String communicationAddress
     ) {
-        return CompletableFuture.completedFuture(new FakeConnection(partner, this));
+        if (this.isConnected()) {
+            connections.putIfAbsent(address, new FakeConnection(partner, this));
+
+            return CompletableFuture.completedFuture(connections.get(address));
+        }
+        else {
+            return CompletableFuture.failedFuture(new ExecutionException(
+                "we are not connected",
+                new IllegalStateException()
+            ));
+        }
     }
 
     public void setCommunicationPartner(FakeCommunication communicationPartner) {
@@ -59,5 +75,32 @@ public class FakeCommunication extends Communication {
 
     public void enableDiscovery() {
         discoveryEnabled = true;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public Device getDevice() {
+        return this.device;
+    }
+
+    @Override
+    public void removeDevice(String communicationAddress) {
+
+        String deviceAddress = device
+            .getConnectionHandler()
+            .getDeviceAddress(communicationAddress);
+
+        device.getConnectionHandler().removeAddressMapping(communicationAddress);
+
+        if (device.getNodeManagement() != null) {
+
+            device
+                .getNodeManagement()
+                .notifyDisconnect(deviceAddress);
+
+            device.getNodeManagement().removeAddressMapping(communicationAddress);
+        }
     }
 }

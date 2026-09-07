@@ -272,12 +272,8 @@ public class ShipCommunication extends Communication {
                     shipConnectionInterface.getRemoteId()
                 );
             }
-            device
-                .getConnectionHandler()
-                .closeConnection(shipConnectionInterface.getRemoteId());
-            device
-                .getNodeManagement()
-                .notifyDisconnect(disconnectReason, shipConnectionInterface);
+
+            removeDevice(shipConnectionInterface.getRemoteId());
         }
 
         @Override
@@ -310,10 +306,6 @@ public class ShipCommunication extends Communication {
 
             if (serviceMap.containsKey(service.getShipId())) {
                 serviceMap.get(service.getShipId()).remove(service);
-
-                if (serviceMap.get(service.getShipId()).isEmpty()) {
-                    removeDevice(service.getShipId());
-                }
             }
         }
 

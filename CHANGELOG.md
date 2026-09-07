@@ -13,7 +13,8 @@
 
 ### Fixed
 
-- fix a bug where client subscriptions are not stored in `SubscriptionDataFunction`
+- fix a bug where client subscriptions were not stored in `SubscriptionDataFunction`
+- fix a bug where unsuccessful bindings were still stored in `BindingDataFunction`
 
 ## [4.0.1] - 2026-05-26
 

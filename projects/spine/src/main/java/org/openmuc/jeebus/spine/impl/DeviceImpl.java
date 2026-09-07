@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.prefs.Preferences;
 
 import static org.openmuc.jeebus.spine.utils.SpineUtilities.getNowTimestamp;
+import static org.openmuc.jeebus.spine.utils.SpineUtilities.simplifyDatagram;
 
 class DeviceImpl implements EntityParent, Device {
     private static final Logger LOGGER = LoggerFactory.getLogger(Device.class);
@@ -470,38 +471,42 @@ class DeviceImpl implements EntityParent, Device {
         return this;
     }
 
-    CompletableFuture<RequestResult> newRequest(BigInteger messageCounter) {
+    CompletableFuture<RequestResult> newRequest(DatagramType datagram) {
         CompletableFuture<RequestResult> future = new CompletableFuture<>();
         synchronized (requests) {
-            requests.put(messageCounter, future);
+            requests.put(
+                datagram.getHeader().getMsgCounter(),
+                future
+            );
         }
         timeoutExecutorService.schedule(
-            () -> checkTimeout(future, messageCounter),
+            () -> checkTimeout(future, datagram),
             TIMEOUT,
             TimeUnit.SECONDS
         );
         LOGGER.debug(
             "Registering new request with message counter {}",
-            messageCounter
+            datagram.getHeader().getMsgCounter()
         );
         return future;
     }
 
     private void checkTimeout(
         CompletableFuture<RequestResult> future,
-        BigInteger messageCounter
+        DatagramType datagram
     ) {
         if (!future.isDone()) {
             LOGGER.error(
-                "Request with message counter {} timed out.",
-                messageCounter
+                "Request '{}' timed out. Message counter: {}",
+                simplifyDatagram(datagram),
+                datagram.getHeader().getMsgCounter()
             );
             future.completeExceptionally(new SpineException(
                 Error.TIMEOUT,
                 "Timeout while waiting for a reply"
             ));
             synchronized (requests) {
-                requests.remove(messageCounter);
+                requests.remove(datagram.getHeader().getMsgCounter());
             }
         }
     }
@@ -528,7 +533,7 @@ class DeviceImpl implements EntityParent, Device {
 
     @Override
     public void close() {
-        LOGGER.info("Shutting down device {}", this);
+        LOGGER.info("Shutting down device {}", this.getAddress().getDevice());
         ArrayDeque<Entity> entities = new ArrayDeque<>(getEntities());
         this.entities.clear();
         while (!entities.isEmpty()) {
