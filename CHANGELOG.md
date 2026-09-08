@@ -6,7 +6,9 @@
 
 - update jEEBus.SHIP dependency to 3.0.0
   - replace `ShipCommunication` constructor parameter with a `ShipConfig` object
+- clean up subscriptions and bindings on disconnect
 - set `connectClientsTo` to `TRUSTED` by default (was `ALL`)
+- rerun discovery process on reconnections
 - deprecate `ConnectionHandler` to be renamed to `ConnectionMapper`
 - deprecate `Communication#open` to be replaced by `Communication#openConnection`
   with clearer handling of concurrency

@@ -27,9 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 
 import static org.openmuc.jeebus.spine.xsd.v1.FunctionEnumType.*;
 
@@ -59,9 +57,10 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     private final List<EntityImpl> lastChangedEntities = new ArrayList<>();
     private final List<FeatureImpl> lastChangedFeatures = new ArrayList<>();
 
-    private final NamedThreadFactory discoveryThreadFactory
-        = new NamedThreadFactory("SpineDiscoveryRunner_");
-    private final ConcurrentMap<String, Thread> discoveryMap = new ConcurrentHashMap<>();
+    private final ExecutorService discoveryExecutor
+        = Executors.newCachedThreadPool(
+            new NamedThreadFactory("SpineDiscoveryRunner_"));
+    private final Map<String, Future<?>> discoveryMap = new ConcurrentHashMap<>();
     private final DiscoveryLogger discoveryLogger = new DiscoveryLogger();
 
     private NodeManagementImpl() {
@@ -841,23 +840,20 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
 
     @Override
     public void startDiscovery(String communicationAddress) {
-        discoveryMap.compute(communicationAddress, (addr, existing) -> {
-            if (existing != null) {
-                LOGGER.debug(
-                    "NodeManagement.startDiscovery was called for {} "
-                        + "but a discovery thread is already running: {}",
-                    addr,
-                    existing.getName()
-                );
-                return existing;
-            } else {
-                Discovery discovery = new Discovery(communicationAddress, this);
 
-                Thread thread = discoveryThreadFactory.newThread(discovery);
-                thread.start();
-                return thread;
-            }
-        });
+        if (discoveryMap.containsKey(communicationAddress)) {
+            LOGGER.debug(
+                "NodeManagement#startDiscovery was called for {}"
+                    + " but a discovery is still running."
+                    + " Cancelling it and starting a new one.",
+                communicationAddress
+            );
+            discoveryMap.remove(communicationAddress).cancel(true);
+        }
+        discoveryMap.put(
+            communicationAddress,
+            discoveryExecutor.submit(new Discovery(communicationAddress, this))
+        );
     }
 
     Set<UseCaseDiscoveryWrapper> getCurrentUseCaseListeners() {
@@ -884,6 +880,12 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
 
     public DiscoveryLogger getDiscoveryLogger() {
         return discoveryLogger;
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        discoveryExecutor.shutdownNow();
     }
 
     public static class MetaInformation implements KnownFeatureInformation {
