@@ -10,7 +10,6 @@
 
 package org.openmuc.jeebus.spine.impl;
 
-import org.openmuc.jeebus.spine.api.Feature;
 import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
@@ -130,14 +129,13 @@ class SubscriptionDataFunction extends FeatureFunction {
         subscriptions.put(remoteDeviceId, newEntryList);
 
         for (SubscriptionEntry entry : deletedEntryList) {
-            if (entry
-                .getServerAddress()
-                .getDevice()
-                .equals(feature.getDevice().getAddress().getDevice())) {
-                ((FeatureImpl) feature
-                    .getDevice()
-                    .getFeature(entry.getServerAddress())).removeSubscriber(
-                    entry.getClientAddress());
+            if (Objects.equals(
+                entry.getServerAddress().getDevice(),
+                feature.getDevice().getAddress().getDevice()
+            )) {
+                ((FeatureImpl) feature.getDevice()
+                    .findFeature(entry.getServerAddress()).orElseThrow())
+                    .removeSubscriber(entry.getClientAddress());
             }
         }
     }
@@ -178,32 +176,23 @@ class SubscriptionDataFunction extends FeatureFunction {
         return subscriptionDeletes;
     }
 
-    void removeSubscription(String deviceAddress) {
+    void removeSubscriptions(String deviceAddress) {
         Optional.ofNullable(subscriptions.remove(deviceAddress))
-            .ifPresent(entries -> entries.forEach(this::releaseClientSubscription));
+            .ifPresent(entries -> entries.forEach(this::releaseSubscription));
     }
 
-    private void releaseClientSubscription(SubscriptionEntry subscription) {
-        try {
-            this.feature.getDevice().getFeature(subscription.getClientAddress())
-                .releaseSubscription(subscription.getServerAddress());
-        }
-        catch (SpineException e) {
-            // if there is no such feature on our device we do not care
-        }
+    private void releaseSubscription(SubscriptionEntry subscription) {
+        this.feature.getDevice().findFeature(subscription.getClientAddress())
+            .ifPresent(found ->
+                found.releaseSubscription(subscription.getServerAddress()));
+
+        this.feature.getDevice().findFeature(subscription.getServerAddress())
+            .ifPresent(found ->
+                found.releaseSubscriber(subscription.getClientAddress()));
     }
 
     @Override
     public void close() {
         // do nothing
-    }
-
-    private Feature getClientFeature(FeatureAddressType address) {
-        try {
-            return this.feature.getDevice().getFeature(address);
-        }
-        catch (SpineException e) {
-            return null;
-        }
     }
 }

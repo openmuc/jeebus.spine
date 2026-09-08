@@ -118,8 +118,8 @@ class BindingDataFunction extends FeatureFunction {
                 feature.getDevice().getAddress().getDevice()
             )) {
                 ((FeatureImpl) feature.getDevice()
-                    .getFeature(entry.getServerAddress())).removeBinding(
-                    entry.getClientAddress());
+                    .findFeature(entry.getServerAddress()).orElseThrow())
+                    .removeBinding(entry.getClientAddress());
             }
         }
     }
@@ -152,6 +152,17 @@ class BindingDataFunction extends FeatureFunction {
             }
         }
         return bindingDeletions;
+    }
+
+    void removeBindings(String deviceAddress) {
+        Optional.ofNullable(bindings.remove(deviceAddress))
+            .ifPresent(entries -> entries.forEach(this::releaseServerBinding));
+    }
+
+    private void releaseServerBinding(BindingEntry binding) {
+        this.feature.getDevice().findFeature(binding.getServerAddress())
+            .ifPresent(found ->
+                found.releaseBoundClient(binding.getClientAddress()));
     }
 
     @Override

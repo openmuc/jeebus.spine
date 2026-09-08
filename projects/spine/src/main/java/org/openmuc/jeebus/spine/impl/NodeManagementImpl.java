@@ -832,7 +832,11 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
 
         getFunction(SubscriptionDataFunction.class)
             .orElseThrow()
-            .removeSubscription(deviceAddress);
+            .removeSubscriptions(deviceAddress);
+
+        getFunction(BindingDataFunction.class)
+            .orElseThrow()
+            .removeBindings(deviceAddress);
     }
 
     @Override

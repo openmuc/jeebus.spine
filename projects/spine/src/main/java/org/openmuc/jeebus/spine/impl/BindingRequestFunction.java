@@ -63,8 +63,8 @@ class BindingRequestFunction extends FeatureFunction {
         }
         if (Objects.equals(
             feature.getType().value(),
-            bindingRequest.getServerFeatureType())
-            && feature.bind(bindingRequest)
+            bindingRequest.getServerFeatureType()
+        ) && feature.bind(bindingRequest)
         ) {
             bindingDataFunction.addBinding(bindingRequest);
             return new SpineAcknowledgment(Error.NO_ERROR);

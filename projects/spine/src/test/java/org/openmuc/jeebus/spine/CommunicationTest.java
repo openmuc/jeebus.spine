@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.RequestResult;
@@ -27,6 +28,7 @@ import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
 @Execution(SAME_THREAD)
+@Isolated
 public class CommunicationTest {
 
     @BeforeEach
@@ -35,7 +37,7 @@ public class CommunicationTest {
     }
 
     @Test
-    void testRead() throws ExecutionException, InterruptedException, SpineException {
+    void testRead() throws ExecutionException, InterruptedException {
         Device server = getGenericServer();
         Device client = getGenericClient();
         CompletableFuture<RequestResult> future = client.getNodeManagement()

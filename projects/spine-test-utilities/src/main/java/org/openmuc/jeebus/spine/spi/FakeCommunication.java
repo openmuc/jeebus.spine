@@ -18,21 +18,36 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 public class FakeCommunication extends Communication {
-    private final String address;
+    private final String communicationAddress;
     private FakeCommunication partner;
     private boolean discoveryEnabled;
     protected boolean connected = false;
     private final Map<String, FakeConnection> connections = new ConcurrentHashMap<>();
 
-    public FakeCommunication(String address) {
-        this.address = address;
+    public FakeCommunication(String communicationAddress) {
+        this.communicationAddress = communicationAddress;
     }
 
     @Override
     public void connect() {
         if (discoveryEnabled) {
-            partner.addDevice(address);
-            addDevice(partner.getAddress());
+            partner.addDevice(communicationAddress);
+            addDevice(partner.getCommunicationAddress());
+        }
+
+        if (partner.getDevice() != null
+            && partner.getDevice().getConnectionHandler() != null
+            && this.getDevice() != null
+            && this.getDevice().getConnectionHandler() != null
+        ) {
+            this.getDevice().getConnectionHandler().addAddressMapping(
+                partner.getDevice().getAddress().getDevice(),
+                partner.getCommunicationAddress()
+            );
+            partner.getDevice().getConnectionHandler().addAddressMapping(
+                this.getDevice().getAddress().getDevice(),
+                this.getCommunicationAddress()
+            );
         }
         connected = true;
     }
@@ -57,9 +72,13 @@ public class FakeCommunication extends Communication {
         String communicationAddress
     ) {
         if (this.isConnected()) {
-            connections.putIfAbsent(address, new FakeConnection(partner, this));
+            connections.putIfAbsent(
+                this.communicationAddress,
+                new FakeConnection(partner, this)
+            );
 
-            return CompletableFuture.completedFuture(connections.get(address));
+            return CompletableFuture.completedFuture(
+                connections.get(this.communicationAddress));
         }
         else {
             return CompletableFuture.failedFuture(new ExecutionException(
@@ -77,8 +96,8 @@ public class FakeCommunication extends Communication {
         discoveryEnabled = true;
     }
 
-    public String getAddress() {
-        return address;
+    public String getCommunicationAddress() {
+        return communicationAddress;
     }
 
     public Device getDevice() {
@@ -92,15 +111,20 @@ public class FakeCommunication extends Communication {
             .getConnectionHandler()
             .getDeviceAddress(communicationAddress);
 
-        device.getConnectionHandler().removeAddressMapping(communicationAddress);
+        if (deviceAddress != null) {
 
-        if (device.getNodeManagement() != null) {
+            device.getConnectionHandler().removeAddressMapping(communicationAddress);
 
-            device
-                .getNodeManagement()
-                .notifyDisconnect(deviceAddress);
+            if (device.getNodeManagement() != null) {
 
-            device.getNodeManagement().removeAddressMapping(communicationAddress);
+                device
+                    .getNodeManagement()
+                    .notifyDisconnect(deviceAddress);
+
+                device
+                    .getNodeManagement()
+                    .removeAddressMapping(communicationAddress);
+            }
         }
     }
 }

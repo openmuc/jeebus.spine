@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmuc.jeebus.ship.api.cert.KeyStoreCertificateStorage;
 import org.openmuc.jeebus.ship.node.ShipConfig;
 import org.openmuc.jeebus.shipspine.ShipCommunication;
@@ -35,7 +36,8 @@ import java.util.concurrent.TimeUnit;
 import static org.openmuc.jeebus.shipspine.ShipCommunication.ConnectClientsTo.NONE;
 import static org.openmuc.jeebus.shipspine.ShipCommunication.ConnectClientsTo.TRUSTED;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
-import static org.openmuc.jeebus.spine.xsd.v1.DeviceTypeEnumType.GENERIC;
+import static org.openmuc.jeebus.spine.api.Error.BINDING_NECESSARY;
+import static org.openmuc.jeebus.spine.xsd.v1.RoleType.CLIENT;
 
 /**
  * This test is similar to {@link CommunicationTest}, but runs over an actual
@@ -47,6 +49,7 @@ import static org.openmuc.jeebus.spine.xsd.v1.DeviceTypeEnumType.GENERIC;
  * information.
  */
 @Execution(ExecutionMode.SAME_THREAD)
+@Isolated
 public class RealCommunicationTest {
 
     private static final String SERVICE_DOMAIN = "real-comm-test.";
@@ -100,7 +103,7 @@ public class RealCommunicationTest {
     private Device getGenericServer() {
         return Device
             .getBuilder()
-            .withDeviceType(GENERIC)
+            .withDeviceType(DeviceTypeEnumType.GENERIC)
             .withCommunication(serverComm)
             .withId(REMOTE_DEVICE_ADDRESS)
             .addEntity()
@@ -120,13 +123,13 @@ public class RealCommunicationTest {
     private Device getGenericClient() {
         return Device
             .getBuilder()
-            .withDeviceType(GENERIC)
+            .withDeviceType(DeviceTypeEnumType.GENERIC)
             .withCommunication(clientComm)
             .withId(LOCAL_DEVICE_ADDRESS)
             .addEntity()
             .setType(EntityTypeEnumType.GENERIC)
             .addFeature()
-            .setRole(RoleType.CLIENT)
+            .setRole(CLIENT)
             .setType(FeatureTypeEnumType.GENERIC)
             .setFeaturePermission(ALLOWING_FEATURE_PERMISSION)
             .apply()
@@ -189,12 +192,13 @@ public class RealCommunicationTest {
     @Test
     void testWrite() throws SpineException, ExecutionException,
         InterruptedException {
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(this::devicesAreConnected);
+        Awaitility.await().atMost(10, TimeUnit.SECONDS)
+            .until(this::devicesAreConnected);
         CmdType writeCmd = getWriteCmd();
 
         ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
         CompletableFuture<RequestResult> writeRequest = client
-            .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
+            .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestWrite(SERVER_FEATURE_ADDRESS, writeCmd);
         // Write request is denied (binding required)
         ExecutionException e = Assertions.assertThrows(
@@ -202,19 +206,19 @@ public class RealCommunicationTest {
             writeRequest::get
         );
         Assertions.assertEquals(
-            Error.BINDING_NECESSARY,
+            BINDING_NECESSARY,
             ((SpineException) e.getCause()).getError()
         );
         ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
 
         CompletableFuture<RequestResult> bindingRequest = client
-            .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
+            .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
         // Wait for binding completion
         bindingRequest.get();
         ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(false);
         writeRequest = client
-            .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
+            .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestWrite(SERVER_FEATURE_ADDRESS, writeCmd);
         writeRequest.get();
         ASSERTING_FEATURE_FUNCTION.assertActiveAndReset(true);
@@ -235,7 +239,7 @@ public class RealCommunicationTest {
         CmdType writeCmd = getWriteCmd();
         CmdType readCmd = getReadCmd();
         CompletableFuture<RequestResult> request = client
-            .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
+            .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestRead(SERVER_FEATURE_ADDRESS, readCmd);
         ExecutionException e = Assertions.assertThrows(
             ExecutionException.class,
@@ -247,7 +251,7 @@ public class RealCommunicationTest {
         );
 
         request = client
-            .getFeature(TestUtilities.CLIENT_FEATURE_ADDRESS)
+            .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestWrite(SERVER_FEATURE_ADDRESS, writeCmd);
         e = Assertions.assertThrows(ExecutionException.class, request::get);
         Assertions.assertEquals(

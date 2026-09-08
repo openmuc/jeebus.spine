@@ -158,10 +158,12 @@ public class ShipCommunication extends Communication {
                 .whenComplete((this::handleConnectionFuture));
         }
         else {
-            // TODO maybe try and filter the current SHIP services
-            //  although they should have been reported...
+            // TODO: maybe try and filter the current SHIP services
+            //  although they should have been reported at this point...
             throw new IllegalStateException(
-                "Opening connections to unidentified SHIP devices is not supported."
+                "Opening connection to unidentified SHIP device "
+                    +communicationAddress
+                    +" is not supported."
             );
         }
     }

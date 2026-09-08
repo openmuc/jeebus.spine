@@ -15,6 +15,7 @@ import org.openmuc.jeebus.spine.spi.UseCase;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 
 import java.util.Map;
+import java.util.Optional;
 
 public interface Device extends EntityParent, Shutdownable {
     /**
@@ -90,6 +91,13 @@ public interface Device extends EntityParent, Shutdownable {
      *     when no feature at the given address exists
      */
     Feature getFeature(FeatureAddressType featureAddress) throws SpineException;
+
+    /**
+     * @param address the address of the Feature to find
+     * @return an Optional containing the found Feature or an empty one if it does
+     * not exist on this Device
+     */
+    Optional<Feature> findFeature(FeatureAddressType address);
 
     /**
      * @return the label set or the empty string if no label was set

@@ -16,17 +16,17 @@ import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 class ConnectionHandlerImpl implements ConnectionHandler {
     private static final Logger LOGGER
         = LoggerFactory.getLogger(ConnectionHandler.class);
     private final Communication communication;
-    private final Map<String, SpineConnection> connections = new HashMap<>();
-    private final Map<String, String> addressMap = new HashMap<>();
+    private final Map<String, SpineConnection> connections = new ConcurrentHashMap<>();
+    private final Map<String, String> addressMap = new ConcurrentHashMap<>();
 
     public ConnectionHandlerImpl(Communication communication) {
         this.communication = communication;
@@ -35,7 +35,7 @@ class ConnectionHandlerImpl implements ConnectionHandler {
     @Override
     public SpineConnection newConnection(String address) {
         SpineConnection connection = null;
-        if (connections.containsKey(address)) {
+        if (address != null && connections.containsKey(address)) {
             LOGGER.trace("{} : Reusing registered connection to device", address);
             connection = connections.get(address);
         }
@@ -43,7 +43,9 @@ class ConnectionHandlerImpl implements ConnectionHandler {
             LOGGER.debug("{} : Opening new connection to device", address);
             try {
                 connection = getCommunication().openConnection(address).get();
-                connections.put(address, connection);
+                if (address != null) {
+                    connections.put(address, connection);
+                }
             }
             catch (ExecutionException | InterruptedException e) {
                 LOGGER.error("Could not open any connection to {}", address, e);
@@ -54,14 +56,12 @@ class ConnectionHandlerImpl implements ConnectionHandler {
 
     @Override
     public String getCommunicationAddress(String deviceAddress) {
-        return addressMap.get(deviceAddress);
+        return deviceAddress != null ? addressMap.get(deviceAddress) : null;
     }
 
     @Override
     public void registerConnection(SpineConnection connection) {
-        synchronized (this) {
-            connections.put(connection.getCommunicationAddress(), connection);
-        }
+        connections.put(connection.getCommunicationAddress(), connection);
     }
 
     @Override
@@ -69,30 +69,28 @@ class ConnectionHandlerImpl implements ConnectionHandler {
         String deviceAddress,
         String communicationAddress
     ) {
-        addressMap.put(deviceAddress, communicationAddress);
+        if (deviceAddress != null && communicationAddress != null) {
+            addressMap.put(deviceAddress, communicationAddress);
+        }
     }
 
     @Override
-    public void removeAddressMapping(String address) {
-        synchronized (this) {
-            closeConnection(address);
-            String deviceAddress = "";
-            for (Map.Entry<String, String> entry : addressMap.entrySet()) {
-                if (Objects.equals(entry.getValue(), address)) {
-                    deviceAddress = entry.getKey();
-                    break;
-                }
-            }
+    public void removeAddressMapping(String communicationAddress) {
+        closeConnection(communicationAddress);
+        String deviceAddress = getDeviceAddress(communicationAddress);
+        if (deviceAddress != null) {
             addressMap.remove(deviceAddress);
         }
     }
 
     @Override
     public void closeConnection(String address) {
-        LOGGER.debug("{} : Closing connection", address);
-        SpineConnection connection = connections.remove(address);
-        if (connection != null) {
-            connection.close();
+        if (address != null) {
+            SpineConnection connection = connections.remove(address);
+            if (connection != null) {
+                connection.close();
+                LOGGER.debug("{} : removed connection", address);
+            }
         }
     }
 
@@ -111,13 +109,15 @@ class ConnectionHandlerImpl implements ConnectionHandler {
     }
 
     public void shutdown() {
-        synchronized (this) {
-            for (SpineConnection conn : connections.values()) {
-                closeConnection(conn.getCommunicationAddress());
-            }
-            connections.clear();
-            addressMap.clear();
-            communication.disconnect();
-        }
+        connections
+            .values()
+            .stream()
+            .filter(Objects::nonNull)
+            .map(SpineConnection::getCommunicationAddress)
+            .forEach(this::closeConnection);
+
+        connections.clear();
+        addressMap.clear();
+        communication.disconnect();
     }
 }

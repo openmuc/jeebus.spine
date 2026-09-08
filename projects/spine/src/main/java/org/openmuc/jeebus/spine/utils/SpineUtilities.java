@@ -367,4 +367,14 @@ public class SpineUtilities {
 
         return (startTime <= timestamp) && (timestamp <= endTime);
     }
+
+    public static String addressToString(FeatureAddressType address) {
+        StringBuilder addressString = new StringBuilder(address.getDevice() + ".");
+        for (Long entityId : address.getEntity()) {
+            addressString.append(entityId).append(".");
+        }
+        addressString.append(address.getFeature());
+
+        return addressString.toString();
+    }
 }

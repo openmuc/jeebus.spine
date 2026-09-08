@@ -201,16 +201,30 @@ class DeviceImpl implements EntityParent, Device {
     @Override
     public Feature getFeature(FeatureAddressType featureAddress) throws
         SpineException {
-        EntityParent parent = this;
-        for (Long entityId : featureAddress.getEntity()) {
-            parent = parent.getEntity(entityId.intValue());
-        }
-        if (!parent.isDevice()) {
-            return ((Entity) parent).getFeature(featureAddress
-                .getFeature()
-                .intValue());
+
+        if (featureAddress.getDevice() == null || Objects.equals(
+            this.getAddress().getDevice(),
+            featureAddress.getDevice()
+        )) {
+            EntityParent parent = this;
+            for (Long entityId : featureAddress.getEntity()) {
+                parent = parent.getEntity(entityId.intValue());
+            }
+            if (!parent.isDevice()) {
+                return ((Entity) parent)
+                    .getFeature(featureAddress.getFeature().intValue());
+            }
         }
         return null;
+    }
+
+    public Optional<Feature> findFeature(FeatureAddressType address) {
+        try {
+            return Optional.ofNullable(getFeature(address));
+        }
+        catch (SpineException e) {
+            return Optional.empty();
+        }
     }
 
     public String getLabel() {

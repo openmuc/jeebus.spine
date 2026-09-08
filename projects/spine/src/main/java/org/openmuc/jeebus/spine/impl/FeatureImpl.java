@@ -18,6 +18,7 @@ import org.openmuc.jeebus.spine.spi.FeaturePermission;
 import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.openmuc.jeebus.spine.spi.SpineSubscription;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
+import org.openmuc.jeebus.spine.utils.SpineUtilities;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingRequestCallType.BindingRequest;
 import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
@@ -29,6 +30,7 @@ import java.util.concurrent.*;
 
 import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.PENDING;
 import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.SUCCESSFUL;
+import static org.openmuc.jeebus.spine.utils.SpineUtilities.addressToString;
 import static org.openmuc.jeebus.spine.xsd.v1.CmdClassifierType.*;
 
 class FeatureImpl implements Feature {
@@ -54,10 +56,10 @@ class FeatureImpl implements Feature {
     private final Set<String> bindings = new ConcurrentSkipListSet<>();
     private final ExecutorService bindingListenerExecutor
         = Executors.newCachedThreadPool();
+    private final Set<BindingListener> bindingListeners = new HashSet<>();
 
     private static final Set<CmdClassifierType> ACKNOWLEDGEMENT_REQUEST_WHITELIST
         = Set.of(WRITE, CALL);
-    private final Set<BindingListener> bindingListeners = new HashSet<>();
 
     FeatureImpl() {}
 
@@ -66,7 +68,7 @@ class FeatureImpl implements Feature {
     }
 
     public boolean subscribe(SubscriptionRequest subscriptionRequest) {
-        LOGGER.debug("Processing subscription request {}", subscriptionRequest);
+        LOGGER.trace("Processing subscription request {}", subscriptionRequest);
         try {
             checkTrustLevel(subscriptionRequest.getClientAddress());
         }
@@ -135,21 +137,19 @@ class FeatureImpl implements Feature {
                             (BindingRequest) bindingRequest.clone()))
                 );
 
-            LOGGER.debug("Binding request accepted");
+            LOGGER.debug(
+                "{} accepted binding request from {}",
+                this,
+                addressToString(bindingRequest.getClientAddress())
+            );
             return true;
         }
-        LOGGER.debug("Binding request denied");
+        LOGGER.debug(
+            "{} denied binding request from {}",
+            this,
+            addressToString(bindingRequest.getClientAddress())
+        );
         return false;
-    }
-
-    private String addressToString(FeatureAddressType address) {
-        StringBuilder addressString = new StringBuilder(address.getDevice() + ".");
-        for (Long entityId : address.getEntity()) {
-            addressString.append(entityId).append(".");
-        }
-        addressString.append(address.getFeature());
-
-        return addressString.toString();
     }
 
     public void read(DatagramType datagram) {
@@ -314,11 +314,16 @@ class FeatureImpl implements Feature {
     }
 
     private boolean isFunction(String nodeName) {
-        return !Objects.equals(nodeName, "function") && !Objects.equals(
+        return !Objects.equals(
+            nodeName,
+            "function"
+        ) && !Objects.equals(
             nodeName,
             "lastUpdateAt"
         ) && !Objects.equals(
-            nodeName, "manufacturerSpecificExtension") && !Objects.equals(
+            nodeName,
+            "manufacturerSpecificExtension"
+        ) && !Objects.equals(
             nodeName,
             "filter"
         );
@@ -513,26 +518,8 @@ class FeatureImpl implements Feature {
         }
         else {
             if (communicationAddress == null) {
-                communicationAddress
-                    = connHandler.getCommunicationAddress(address.getDevice());
-                if (communicationAddress == null) {
-                    /* One might think that, if we have no communication address,
-                     * surely we cannot reach the destination device, and so we should
-                     * exit early.
-                     * One would be wrong: at the very least in the test
-                     * suite, which uses a FakeCommunication implementation that does
-                     * no networking, a communication address for the destination
-                     * is not actually required. So all we can do is warn (and ignore
-                     * the warning when it comes up in tests)
-                     */
-                    // if you came here because you saw this warning in tests, you
-                    // can (probably) ignore it; see above explanation.
-                    LOGGER.warn(
-                        "Feature {} attempting to send to device {}, but could not find a communication address for that destination!",
-                        addressToString(this.getAddress()),
-                        addressToString(address)
-                    );
-                }
+                communicationAddress = connHandler.getCommunicationAddress(
+                    address.getDevice());
             }
             SpineConnection connection = connHandler.newConnection(
                 communicationAddress
@@ -710,9 +697,12 @@ class FeatureImpl implements Feature {
     @Override
     public void releaseSubscriber(FeatureAddressType clientAddress) {
         removeSubscriber(clientAddress);
-        NodeManagementImpl nodeManagement
-            = getNodeManagement();
-        nodeManagement.sendSubscriptionRelease(clientAddress, getAddress());
+        // Let's not start connections just to communicate a subscription release
+        if(getDevice().getConnectionHandler().getCommunicationAddress(
+            clientAddress.getDevice()) != null
+        ) {
+            getNodeManagement().sendSubscriptionRelease(clientAddress, getAddress());
+        }
     }
 
     @Override
@@ -721,9 +711,13 @@ class FeatureImpl implements Feature {
             throw new UnsupportedOperationException();
         }
         removeBinding(clientAddress);
-        NodeManagementImpl nodeManagement
-            = getNodeManagement();
-        nodeManagement.sendBindingRelease(clientAddress, getAddress());
+
+        // Let's not start connections just to communicate a binding release
+        if(getDevice().getConnectionHandler().getCommunicationAddress(
+            clientAddress.getDevice()) != null
+        ) {
+            getNodeManagement().sendBindingRelease(clientAddress, getAddress());
+        }
     }
 
     @Override
@@ -731,9 +725,7 @@ class FeatureImpl implements Feature {
         if (role.equals(RoleType.SERVER)) {
             throw new UnsupportedOperationException();
         }
-        NodeManagementImpl nodeManagement
-            = getNodeManagement();
-        nodeManagement.sendBindingRelease(getAddress(), serverAddress);
+        getNodeManagement().sendBindingRelease(getAddress(), serverAddress);
     }
 
     @Override
@@ -929,6 +921,14 @@ class FeatureImpl implements Feature {
 
     SubscriptionWrapper getSubscription(FeatureAddressType address) {
         return this.subscriptions.get(addressToString(address));
+    }
+
+    boolean getBound(FeatureAddressType address) {
+        return this.bindings.contains(addressToString(address));
+    }
+
+    boolean getSubscribed(FeatureAddressType address) {
+        return this.subscribers.contains(address);
     }
 
     @Override

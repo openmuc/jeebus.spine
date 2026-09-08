@@ -11,11 +11,9 @@
 package org.openmuc.jeebus.spine.impl;
 
 import org.hamcrest.MatcherAssert;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.RequestResult;
 import org.openmuc.jeebus.spine.api.SpineException;
@@ -39,6 +37,7 @@ import static org.openmuc.jeebus.spine.xsd.v1.RoleType.CLIENT;
 import static org.openmuc.jeebus.spine.xsd.v1.RoleType.SERVER;
 
 @Execution(SAME_THREAD)
+@Isolated
 public class SubscriptionTest {
     private static final AssertingSubscription SUBSCRIPTION
         = new AssertingSubscription();
@@ -305,13 +304,21 @@ public class SubscriptionTest {
                 SUBSCRIPTION
             ).join();
 
+        FeatureImpl clientFeature = (FeatureImpl) client
+            .getFeature(CLIENT_FEATURE_ADDRESS);
+        FeatureImpl serverFeature = (FeatureImpl) server
+            .getFeature(SERVER_FEATURE_ADDRESS);
+
         assertThat(
-            ((FeatureImpl) client.getFeature(CLIENT_FEATURE_ADDRESS))
-                .getSubscription(SERVER_FEATURE_ADDRESS),
+            clientFeature.getSubscription(SERVER_FEATURE_ADDRESS),
             is(notNullValue())
         );
 
-        server.close();
+        server
+            .getDevice()
+            .getConnectionHandler()
+            .closeConnection(LOCAL_COMM_ADDRESS);
+
         assertThat(
             client
                 .getDevice()
@@ -324,9 +331,13 @@ public class SubscriptionTest {
         );
 
         assertThat(
-            ((FeatureImpl) client.getFeature(CLIENT_FEATURE_ADDRESS))
-                .getSubscription(SERVER_FEATURE_ADDRESS),
+            clientFeature.getSubscription(SERVER_FEATURE_ADDRESS),
             is(nullValue())
+        );
+
+        assertThat(
+            serverFeature.getSubscribed(CLIENT_FEATURE_ADDRESS),
+            is(false)
         );
     }
 

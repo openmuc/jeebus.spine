@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  ********************************************************************************/
 
-package org.openmuc.jeebus.spine;
+package org.openmuc.jeebus.spine.impl;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.Execution;
@@ -160,5 +160,31 @@ public class BindingTest {
 
         assertDeviceRegisteredBinding(server, client, false);
         assertDeviceRegisteredBinding(client, server, false);
+    }
+
+    @Test
+    void testBindingDeletionOnDisconnect() throws SpineException {
+        client
+            .getFeature(CLIENT_FEATURE_ADDRESS)
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC)
+            .join();
+
+        FeatureImpl feature = (FeatureImpl) server
+            .getFeature(SERVER_FEATURE_ADDRESS);
+
+        assertThat(
+            feature.getBound(CLIENT_FEATURE_ADDRESS),
+            is(true)
+        );
+
+        client
+            .getDevice()
+            .getConnectionHandler()
+            .closeConnection(REMOTE_COMM_ADDRESS);
+
+        assertThat(
+            feature.getBound(CLIENT_FEATURE_ADDRESS),
+            is(false)
+        );
     }
 }

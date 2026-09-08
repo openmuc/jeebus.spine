@@ -45,7 +45,7 @@ public class FakeConnection implements SpineConnection {
 
     @Override
     public String getCommunicationAddress() {
-        return partner.getAddress();
+        return partner.getCommunicationAddress();
     }
 
     @Override
@@ -53,9 +53,9 @@ public class FakeConnection implements SpineConnection {
         this.isUp = false;
         LOGGER.info(
             "Connection to {} was closed",
-            partner.getAddress()
+            partner.getCommunicationAddress()
         );
-        us.removeDevice(partner.getAddress());
-        partner.removeDevice(us.getAddress());
+        us.removeDevice(partner.getCommunicationAddress());
+        partner.removeDevice(us.getCommunicationAddress());
     }
 }
