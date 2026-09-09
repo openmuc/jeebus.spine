@@ -68,9 +68,21 @@ public class SpineUtilities {
      * is "source command cmd -&gt; destination"
      */
     public static String simplifyDatagram(DatagramType what) {
-        String from = what.getHeader().getAddressSource().getDevice();
-        String to = what.getHeader().getAddressDestination().getDevice();
-        String command = what.getHeader().getCmdClassifier().value();
+        Optional<HeaderType> header = Optional.ofNullable(what)
+            .map(DatagramType::getHeader);
+
+        String from = header
+            .map(HeaderType::getAddressSource)
+            .map(DeviceAddressType::getDevice)
+            .orElse(null);
+        String to = header
+            .map(HeaderType::getAddressDestination)
+            .map(DeviceAddressType::getDevice)
+            .orElse(null);
+        String command = header
+            .map(HeaderType::getCmdClassifier)
+            .map(CmdClassifierType::value)
+            .orElse(null);
         String cmd = simplifyCmds(what);
 
         return String.format("%s %s %s -> %s", from, command, cmd, to);
@@ -354,5 +366,15 @@ public class SpineUtilities {
         long timestamp = Instant.parse(timestampString).getEpochSecond();
 
         return (startTime <= timestamp) && (timestamp <= endTime);
+    }
+
+    public static String addressToString(FeatureAddressType address) {
+        StringBuilder addressString = new StringBuilder(address.getDevice() + ".");
+        for (Long entityId : address.getEntity()) {
+            addressString.append(entityId).append(".");
+        }
+        addressString.append(address.getFeature());
+
+        return addressString.toString();
     }
 }

@@ -42,10 +42,10 @@ public abstract class Communication {
      *     the address used in the communication protocol, i.e. not the SPINE device
      *     address. Must be a valid String representation of a SocketAddress
      * @return a connection to the requested device
-     * @deprecated since 4.1.0 and scheduled to be replaced by
-     * {@link Communication#openConnection(String)}
+     * @deprecated since 4.1.0. Please use
+     * {@link Communication#openConnection(String)} instead
      */
-    @Deprecated(since = "4.1.0", forRemoval = true)
+    @Deprecated(since = "4.1.0")
     public abstract SpineConnection open(String address);
 
     /**
@@ -99,8 +99,22 @@ public abstract class Communication {
         device.deviceDetected(communicationAddress);
     }
 
-    public void removeDevice(String address) {
-        device.getNodeManagement().removeAddressMapping(address);
-        device.getConnectionHandler().removeAddressMapping(address);
+    public void removeDevice(String communicationAddress) {
+
+        String deviceAddress = device
+            .getConnectionHandler()
+            .getDeviceAddress(communicationAddress);
+
+        device
+            .getConnectionHandler()
+            .closeConnection(communicationAddress);
+
+        device.getConnectionHandler().removeAddressMapping(communicationAddress);
+
+        device
+            .getNodeManagement()
+            .notifyDisconnect(deviceAddress);
+
+        device.getNodeManagement().removeAddressMapping(communicationAddress);
     }
 }

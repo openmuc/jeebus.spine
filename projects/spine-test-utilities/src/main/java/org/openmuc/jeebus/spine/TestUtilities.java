@@ -32,9 +32,9 @@ public class TestUtilities {
     public static final String REMOTE_COMM_ADDRESS = "localhost:1235";
     public static final FeatureAddressType SERVER_FEATURE_ADDRESS
         = new FeatureAddressType(REMOTE_DEVICE_ADDRESS, new ArrayList<>(List.of(1L)), 0L);
-    public static final Communication LOCAL_COMM = new FakeCommunication(
+    public static final FakeCommunication LOCAL_COMM = new FakeCommunication(
         LOCAL_COMM_ADDRESS);
-    public static final Communication REMOTE_COMM = new FakeCommunication(
+    public static final FakeCommunication REMOTE_COMM = new FakeCommunication(
         REMOTE_COMM_ADDRESS);
     public static final AssertingFeatureFunction ASSERTING_FEATURE_FUNCTION
         = new AssertingFeatureFunction();
@@ -46,9 +46,9 @@ public class TestUtilities {
     private static final Logger LOGGER = LoggerFactory.getLogger(TestUtilities.class);
 
     static {
-        ((FakeCommunication) LOCAL_COMM).setCommunicationPartner((FakeCommunication) REMOTE_COMM);
-        ((FakeCommunication) REMOTE_COMM).setCommunicationPartner((FakeCommunication) LOCAL_COMM);
-        ((FakeCommunication) LOCAL_COMM).enableDiscovery();
+        LOCAL_COMM.setCommunicationPartner(REMOTE_COMM);
+        REMOTE_COMM.setCommunicationPartner(LOCAL_COMM);
+        LOCAL_COMM.enableDiscovery();
     }
 
     public static DeviceBuilder getGenericDeviceBuilder(

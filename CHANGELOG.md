@@ -6,10 +6,17 @@
 
 - update jEEBus.SHIP dependency to 3.0.0
   - replace `ShipCommunication` constructor parameter with a `ShipConfig` object
+- clean up subscriptions and bindings on disconnect
 - set `connectClientsTo` to `TRUSTED` by default (was `ALL`)
+- rerun discovery process on reconnections
 - deprecate `ConnectionHandler` to be renamed to `ConnectionMapper`
 - deprecate `Communication#open` to be replaced by `Communication#openConnection`
   with clearer handling of concurrency
+
+### Fixed
+
+- fix a bug where client subscriptions were not stored in `SubscriptionDataFunction`
+- fix a bug where unsuccessful bindings were still stored in `BindingDataFunction`
 
 ## [4.0.1] - 2026-05-26
 

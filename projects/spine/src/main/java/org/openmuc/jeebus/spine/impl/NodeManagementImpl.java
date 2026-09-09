@@ -17,14 +17,17 @@ import org.openmuc.jeebus.spine.spi.*;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.utils.NamedThreadFactory;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingDeleteCallType.BindingDelete;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingRequestCallType.BindingRequest;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementDetailedDiscoveryFeatureInformationType.Description;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionDeleteCallType.SubscriptionDelete;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionRequestCallType.SubscriptionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 
 import static org.openmuc.jeebus.spine.xsd.v1.FunctionEnumType.*;
 
@@ -34,13 +37,13 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         = LoggerFactory.getLogger(NodeManagement.class);
     public static final FeaturePermission FEATURE_PERMISSION = new FeaturePermission() {
         @Override
-        public boolean bindingAllowed(NodeManagementBindingRequestCallType.BindingRequest bindingRequest) {
+        public boolean bindingAllowed(BindingRequest bindingRequest) {
             return false;
         }
 
         @Override
         public boolean subscriptionAllowed(
-                NodeManagementSubscriptionRequestCallType.SubscriptionRequest subscriptionRequest
+            SubscriptionRequest subscriptionRequest
         ) {
             return true;
         }
@@ -54,9 +57,10 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     private final List<EntityImpl> lastChangedEntities = new ArrayList<>();
     private final List<FeatureImpl> lastChangedFeatures = new ArrayList<>();
 
-    private final NamedThreadFactory discoveryThreadFactory
-        = new NamedThreadFactory("SpineDiscoveryRunner_");
-    private final ConcurrentMap<String, Thread> discoveryMap = new ConcurrentHashMap<>();
+    private final ExecutorService discoveryExecutor
+        = Executors.newCachedThreadPool(
+            new NamedThreadFactory("SpineDiscoveryRunner_"));
+    private final Map<String, Future<?>> discoveryMap = new ConcurrentHashMap<>();
     private final DiscoveryLogger discoveryLogger = new DiscoveryLogger();
 
     private NodeManagementImpl() {
@@ -91,16 +95,17 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         CmdType subscriptionDeleteCmd = new CmdType();
         NodeManagementSubscriptionDeleteCallType deleteCall
             = new NodeManagementSubscriptionDeleteCallType();
-        NodeManagementSubscriptionDeleteCallType.SubscriptionDelete subscription
-            = new NodeManagementSubscriptionDeleteCallType.SubscriptionDelete();
+        SubscriptionDelete subscription = new SubscriptionDelete();
         subscription.setClientAddress(clientAddress);
         subscription.setServerAddress(serverAddress);
         deleteCall.setSubscriptionDelete(subscription);
         subscriptionDeleteCmd.setNodeManagementSubscriptionDeleteCall(deleteCall);
+
         if (clientAddress.getDevice().equals(getDevice().getAddress().getDevice())) {
-            if (!serverAddress
-                .getDevice()
-                .equals(getDevice().getAddress().getDevice())) {
+            if (!Objects.equals(
+                serverAddress.getDevice(),
+                getDevice().getAddress().getDevice()
+            )) {
                 requestCall(
                     getNodeManagementAddress(serverAddress.getDevice()),
                     subscriptionDeleteCmd
@@ -115,9 +120,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
             );
         }
         try {
-            ((SubscriptionDataFunction) getFunction(
-                NODE_MANAGEMENT_SUBSCRIPTION_DATA)).removeSubscriptionEntry(
-                subscription);
+            ((SubscriptionDataFunction) getFunction(NODE_MANAGEMENT_SUBSCRIPTION_DATA))
+                .removeSubscriptionEntry(subscription);
         }
         catch (SpineException e) {
             LOGGER.error("There was an error trying to release a subscription:", e);
@@ -141,8 +145,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         CmdType bindingDeleteCmd = new CmdType();
         NodeManagementBindingDeleteCallType bindingDeleteCall
             = new NodeManagementBindingDeleteCallType();
-        NodeManagementBindingDeleteCallType.BindingDelete bindingDelete
-            = new NodeManagementBindingDeleteCallType.BindingDelete();
+        BindingDelete bindingDelete
+            = new BindingDelete();
         bindingDelete.setClientAddress(clientAddress);
         bindingDelete.setServerAddress(serverAddress);
         bindingDeleteCall.setBindingDelete(bindingDelete);
@@ -336,17 +340,20 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         SubscriptionDataFunction subscriptionDataFunction
             = (SubscriptionDataFunction) getFunction(
             NODE_MANAGEMENT_SUBSCRIPTION_DATA);
-        for (Map.Entry<String, List<NodeManagementSubscriptionDeleteCallType.SubscriptionDelete>> releasedSubscriptions : subscriptionDataFunction
-            .deleteSubscriptions(
-                address)
-            .entrySet()) {
+        for (Map.Entry<String, Set<SubscriptionDelete>> releasedSubscriptions
+            : subscriptionDataFunction.deleteSubscriptions(address).entrySet()
+        ) {
             CmdType subscriptionDeleteCmd = new CmdType();
             NodeManagementSubscriptionDeleteCallType deleteCall
                 = new NodeManagementSubscriptionDeleteCallType();
-            for (NodeManagementSubscriptionDeleteCallType.SubscriptionDelete subscriptionDelete : releasedSubscriptions.getValue()) {
+
+            for (SubscriptionDelete subscriptionDelete
+                : releasedSubscriptions.getValue()
+            ) {
                 deleteCall.setSubscriptionDelete(subscriptionDelete);
                 subscriptionDeleteCmd.setNodeManagementSubscriptionDeleteCall(
-                    deleteCall);
+                    deleteCall
+                );
                 requestCall(
                     getNodeManagementAddress(releasedSubscriptions.getKey()),
                     subscriptionDeleteCmd
@@ -359,14 +366,15 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         BindingDataFunction bindingDataFunction
             = (BindingDataFunction) getFunction(
             NODE_MANAGEMENT_BINDING_DATA);
-        for (Map.Entry<String, List<NodeManagementBindingDeleteCallType.BindingDelete>> releasedBindings : bindingDataFunction
-            .deleteBindings(
-                address)
-            .entrySet()) {
+        for (Map.Entry<String, Set<BindingDelete>> releasedBindings :
+            bindingDataFunction
+                .deleteBindings(address)
+                .entrySet()
+        ) {
             CmdType bindingDeleteCmd = new CmdType();
             NodeManagementBindingDeleteCallType bindingDeleteCall
                 = new NodeManagementBindingDeleteCallType();
-            for (NodeManagementBindingDeleteCallType.BindingDelete bindingDelete : releasedBindings.getValue()) {
+            for (BindingDelete bindingDelete : releasedBindings.getValue()) {
                 bindingDeleteCall.setBindingDelete(bindingDelete);
                 bindingDeleteCmd.setNodeManagementBindingDeleteCall(bindingDeleteCall);
                 requestCall(
@@ -411,8 +419,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     ) {
         NodeManagementDetailedDiscoveryFeatureInformationType featureInformation
             = new NodeManagementDetailedDiscoveryFeatureInformationType();
-        NodeManagementDetailedDiscoveryFeatureInformationType.Description description
-            = new NodeManagementDetailedDiscoveryFeatureInformationType.Description();
+        Description description
+            = new Description();
         description.setLastStateChange(change);
         description.setFeatureAddress(address);
         featureInformation.setDescription(description);
@@ -452,25 +460,6 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         }
     }
 
-    public void registerSubscriptionRequest(
-        FeatureAddressType clientAddress,
-        FeatureAddressType serverAddress,
-        FeatureTypeEnumType serverFeatureType
-    ) {
-        NodeManagementSubscriptionRequestCallType.SubscriptionRequest
-            subscriptionRequest = getSubscriptionRequest(
-            clientAddress,
-            serverAddress,
-            serverFeatureType
-        )
-            .getNodeManagementSubscriptionRequestCall()
-            .getSubscriptionRequest();
-
-        ((SubscriptionDataFunction)
-            getFunction(NODE_MANAGEMENT_SUBSCRIPTION_DATA))
-            .addSubscriptionEntry(subscriptionRequest);
-    }
-
     public CmdType getSubscriptionRequest(
         FeatureAddressType clientAddress,
         FeatureAddressType serverAddress,
@@ -478,9 +467,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     ) {
         NodeManagementSubscriptionRequestCallType subscriptionRequestCall
             = new NodeManagementSubscriptionRequestCallType();
-        NodeManagementSubscriptionRequestCallType.SubscriptionRequest
-            subscriptionRequest
-            = new NodeManagementSubscriptionRequestCallType.SubscriptionRequest();
+        SubscriptionRequest subscriptionRequest = new SubscriptionRequest();
         subscriptionRequest.setClientAddress(clientAddress);
         subscriptionRequest.setServerAddress(serverAddress);
         subscriptionRequest.setServerFeatureType(serverFeatureType.value());
@@ -493,13 +480,13 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     }
 
     public CmdType getBindingRequest(
-        FeatureAddressType clientAddress, FeatureAddressType serverAddress,
+        FeatureAddressType clientAddress,
+        FeatureAddressType serverAddress,
         FeatureTypeEnumType serverFeatureType
     ) {
         NodeManagementBindingRequestCallType bindingRequestCall
             = new NodeManagementBindingRequestCallType();
-        NodeManagementBindingRequestCallType.BindingRequest bindingRequest
-            = new NodeManagementBindingRequestCallType.BindingRequest();
+        BindingRequest bindingRequest = new BindingRequest();
         bindingRequest.setClientAddress(clientAddress);
         bindingRequest.setServerAddress(serverAddress);
         bindingRequest.setServerFeatureType(serverFeatureType.value());
@@ -507,9 +494,6 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
 
         CmdType cmd = new CmdType();
         cmd.setNodeManagementBindingRequestCall(bindingRequestCall);
-
-        ((BindingDataFunction) getFunction(NODE_MANAGEMENT_BINDING_DATA)).addBinding(
-            bindingRequest);
 
         return cmd;
     }
@@ -552,7 +536,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     private boolean containsDestinationListDataFunction(
         NodeManagementDetailedDiscoveryDataType detailedDiscoveryData
     ) {
-        NodeManagementDetailedDiscoveryFeatureInformationType.Description
+        Description
             nodeManagementDescription = getNodeManagementFeatureDescription(
             detailedDiscoveryData);
         if (nodeManagementDescription == null) {
@@ -608,7 +592,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         }
     }
 
-    private NodeManagementDetailedDiscoveryFeatureInformationType.Description getNodeManagementFeatureDescription(
+    private Description getNodeManagementFeatureDescription(
         NodeManagementDetailedDiscoveryDataType detailedDiscoveryData
     ) {
         for (NodeManagementDetailedDiscoveryFeatureInformationType featureInfo
@@ -756,8 +740,7 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         return requestSubscription(
             getNodeManagementAddress(deviceAddress),
             FeatureTypeEnumType.NODE_MANAGEMENT,
-            listener,
-            communicationAddress
+            listener
         );
     }
 
@@ -785,7 +768,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     @Override
     public CompletableFuture<RequestResult> subscribeDestinationListData(
         String deviceId,
-        SpineSubscription subscription, boolean notifyFullRead
+        SpineSubscription subscription,
+        boolean notifyFullRead
     ) {
         CompletableFuture<RequestResult> future = requestSubscription(
             getNodeManagementAddress(deviceId),
@@ -829,10 +813,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
 
     @Override
     public void removeAddressMapping(String communicationAddress) {
-        DestinationListDataFunction function
-            = (DestinationListDataFunction) getFunction(
-            NODE_MANAGEMENT_DESTINATION_LIST_DATA);
-        function.deleteAddressMapping(communicationAddress);
+        getFunction(DestinationListDataFunction.class)
+            .ifPresent(function -> function.deleteAddressMapping(communicationAddress));
     }
 
     @Override
@@ -840,28 +822,38 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
         DisconnectReason disconnectReason,
         ShipConnectionInterface shipConnectionInterface
     ) {
+        notifyDisconnect(shipConnectionInterface.getRemoteId());
+    }
+
+    @Override
+    public void notifyDisconnect(String deviceAddress) {
         // TODO: stop use case execution on disconnected remote devices
+
+        getFunction(SubscriptionDataFunction.class)
+            .orElseThrow()
+            .removeSubscriptions(deviceAddress);
+
+        getFunction(BindingDataFunction.class)
+            .orElseThrow()
+            .removeBindings(deviceAddress);
     }
 
     @Override
     public void startDiscovery(String communicationAddress) {
-        discoveryMap.compute(communicationAddress, (addr, existing) -> {
-            if (existing != null) {
-                LOGGER.debug(
-                    "NodeManagement.startDiscovery was called for {} "
-                        + "but a discovery thread is already running: {}",
-                    addr,
-                    existing.getName()
-                );
-                return existing;
-            } else {
-                Discovery discovery = new Discovery(communicationAddress, this);
 
-                Thread thread = discoveryThreadFactory.newThread(discovery);
-                thread.start();
-                return thread;
-            }
-        });
+        if (discoveryMap.containsKey(communicationAddress)) {
+            LOGGER.debug(
+                "NodeManagement#startDiscovery was called for {}"
+                    + " but a discovery is still running."
+                    + " Cancelling it and starting a new one.",
+                communicationAddress
+            );
+            discoveryMap.remove(communicationAddress).cancel(true);
+        }
+        discoveryMap.put(
+            communicationAddress,
+            discoveryExecutor.submit(new Discovery(communicationAddress, this))
+        );
     }
 
     Set<UseCaseDiscoveryWrapper> getCurrentUseCaseListeners() {
@@ -888,6 +880,12 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
 
     public DiscoveryLogger getDiscoveryLogger() {
         return discoveryLogger;
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        discoveryExecutor.shutdownNow();
     }
 
     public static class MetaInformation implements KnownFeatureInformation {

@@ -8,15 +8,18 @@
  * SPDX-License-Identifier: EPL-2.0
  ********************************************************************************/
 
-package org.openmuc.jeebus.spine;
+package org.openmuc.jeebus.spine.impl;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.RequestResult;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.AssertingSubscription;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementSubscriptionDataType.SubscriptionEntry;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -24,12 +27,17 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
+import static org.openmuc.jeebus.spine.impl.SubscriptionWrapper.State.SUCCESSFUL;
+import static org.openmuc.jeebus.spine.xsd.v1.FeatureTypeEnumType.GENERIC;
+import static org.openmuc.jeebus.spine.xsd.v1.RoleType.CLIENT;
+import static org.openmuc.jeebus.spine.xsd.v1.RoleType.SERVER;
 
+@Execution(SAME_THREAD)
+@Isolated
 public class SubscriptionTest {
     private static final AssertingSubscription SUBSCRIPTION
         = new AssertingSubscription();
@@ -42,12 +50,17 @@ public class SubscriptionTest {
             getGenericDeviceBuilder(
                 REMOTE_COMM,
                 REMOTE_DEVICE_ADDRESS
-            ), RoleType.SERVER
-        ).build();
+            ),
+            SERVER
+        ).withDiscoverDevices(false).build();
+
         client = addFeature(
-            getGenericDeviceBuilder(LOCAL_COMM, LOCAL_DEVICE_ADDRESS),
-            RoleType.CLIENT
-        ).withDiscoverDevices(true).build();
+            getGenericDeviceBuilder(
+                LOCAL_COMM,
+                LOCAL_DEVICE_ADDRESS
+            ),
+            CLIENT
+        ).withDiscoverDevices(false).build();
     }
 
     @Test
@@ -56,7 +69,7 @@ public class SubscriptionTest {
         client.getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
 
@@ -71,7 +84,7 @@ public class SubscriptionTest {
             .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
 
@@ -79,7 +92,7 @@ public class SubscriptionTest {
             .getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 new AssertingSubscription()
             );
 
@@ -107,7 +120,7 @@ public class SubscriptionTest {
             .getCmd()
             .getNodeManagementSubscriptionData();
 
-        List<NodeManagementSubscriptionDataType.SubscriptionEntry> result
+        List<SubscriptionEntry> result
             = subscriptionData
             .getSubscriptionEntry()
             .stream()
@@ -128,6 +141,7 @@ public class SubscriptionTest {
         Device deviceUnderTest,
         boolean compare
     ) throws InterruptedException, ExecutionException {
+
         CompletableFuture<RequestResult> subscriptionReadRequest = requestingDevice
             .getNodeManagement()
             .requestSubscriptionData(deviceUnderTest.getAddress().getDevice());
@@ -137,15 +151,16 @@ public class SubscriptionTest {
             .getCmd()
             .getNodeManagementSubscriptionData();
 
-        await()
-            .atMost(1, SECONDS)
-            .until(() -> containsSubscription(subscriptionData) == compare);
+        MatcherAssert.assertThat(
+            containsSubscription(subscriptionData),
+            is(compare)
+        );
     }
 
     private boolean containsSubscription(NodeManagementSubscriptionDataType subscriptionData) {
         if (subscriptionData != null
             && subscriptionData.getSubscriptionEntry() != null) {
-            for (NodeManagementSubscriptionDataType.SubscriptionEntry subscription : subscriptionData.getSubscriptionEntry()) {
+            for (SubscriptionEntry subscription : subscriptionData.getSubscriptionEntry()) {
                 if (addressEquals(
                     subscription.getClientAddress(),
                     CLIENT_FEATURE_ADDRESS
@@ -175,7 +190,7 @@ public class SubscriptionTest {
         client.getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
 
@@ -191,11 +206,10 @@ public class SubscriptionTest {
         client.getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
 
-        //FIXME sometimes fails with ConcurrentModificationException
         client
             .getFeature(CLIENT_FEATURE_ADDRESS)
             .releaseSubscription(SERVER_FEATURE_ADDRESS);
@@ -209,7 +223,7 @@ public class SubscriptionTest {
         client.getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
         server
@@ -229,11 +243,10 @@ public class SubscriptionTest {
         client.getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
 
-        //FIXME: this fails (rarely) with a ConcurrentModificationException
         server.getEntity(1).deleteFeature(0);
         assertDeviceRegisteredSubscription(server, client, false);
         assertDeviceRegisteredSubscription(client, server, false);
@@ -245,13 +258,118 @@ public class SubscriptionTest {
         client.getFeature(CLIENT_FEATURE_ADDRESS)
             .requestSubscription(
                 SERVER_FEATURE_ADDRESS,
-                FeatureTypeEnumType.GENERIC,
+                GENERIC,
                 SUBSCRIPTION
             );
 
         client.getEntity(1).deleteFeature(0);
         assertDeviceRegisteredSubscription(server, client, false);
         assertDeviceRegisteredSubscription(client, server, false);
+    }
+
+    @Test
+    public void testSubscriptionCreationByWrapper() throws SpineException {
+        client.getFeature(CLIENT_FEATURE_ADDRESS)
+            .requestSubscription(
+                SERVER_FEATURE_ADDRESS,
+                GENERIC,
+                SUBSCRIPTION
+            ).join();
+
+        SubscriptionWrapper wrapper = ((FeatureImpl) client
+            .getFeature(CLIENT_FEATURE_ADDRESS))
+            .getSubscription(SERVER_FEATURE_ADDRESS);
+
+        assertThat(
+            wrapper.getState(),
+            is(SUCCESSFUL)
+        );
+        assertThat(
+            wrapper.getSubscriptions(),
+            hasSize(1)
+        );
+        assertThat(
+            wrapper.getSubscriptions(),
+            hasItem(SUBSCRIPTION)
+        );
+
+    }
+
+    @Test
+    public void testSubscriptionDeletionOnDisconnect() throws SpineException {
+        client.getFeature(CLIENT_FEATURE_ADDRESS)
+            .requestSubscription(
+                SERVER_FEATURE_ADDRESS,
+                GENERIC,
+                SUBSCRIPTION
+            ).join();
+
+        FeatureImpl clientFeature = (FeatureImpl) client
+            .getFeature(CLIENT_FEATURE_ADDRESS);
+        FeatureImpl serverFeature = (FeatureImpl) server
+            .getFeature(SERVER_FEATURE_ADDRESS);
+
+        assertThat(
+            clientFeature.getSubscription(SERVER_FEATURE_ADDRESS),
+            is(notNullValue())
+        );
+
+        server
+            .getDevice()
+            .getConnectionHandler()
+            .closeConnection(LOCAL_COMM_ADDRESS);
+
+        assertThat(
+            client
+                .getDevice()
+                .getNodeManagement()
+                .getFunction(FunctionEnumType.NODE_MANAGEMENT_SUBSCRIPTION_DATA)
+                .read(null, SERVER_FEATURE_ADDRESS)
+                .getNodeManagementSubscriptionData()
+                .getSubscriptionEntry(),
+            hasSize(0)
+        );
+
+        assertThat(
+            clientFeature.getSubscription(SERVER_FEATURE_ADDRESS),
+            is(nullValue())
+        );
+
+        assertThat(
+            serverFeature.getSubscribed(CLIENT_FEATURE_ADDRESS),
+            is(false)
+        );
+    }
+
+    @Test
+    public void testDoubleSubscriptionByWrapper() throws SpineException {
+
+        CompletableFuture.allOf(
+            client.getFeature(CLIENT_FEATURE_ADDRESS)
+                .requestSubscription(
+                    SERVER_FEATURE_ADDRESS,
+                    GENERIC,
+                    SUBSCRIPTION
+                ),
+            client.getFeature(CLIENT_FEATURE_ADDRESS)
+                .requestSubscription(
+                    SERVER_FEATURE_ADDRESS,
+                    GENERIC,
+                    notification -> {}
+                )
+        ).join();
+
+        assertThat(
+            ((FeatureImpl) client.getFeature(CLIENT_FEATURE_ADDRESS))
+                .getSubscription(SERVER_FEATURE_ADDRESS),
+            is(notNullValue())
+        );
+
+        assertThat(
+            ((FeatureImpl) client.getFeature(CLIENT_FEATURE_ADDRESS))
+                .getSubscription(SERVER_FEATURE_ADDRESS).getSubscriptions(),
+            hasSize(2)
+        );
     }
 
 }

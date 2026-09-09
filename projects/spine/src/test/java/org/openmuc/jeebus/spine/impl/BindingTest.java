@@ -8,25 +8,31 @@
  * SPDX-License-Identifier: EPL-2.0
  ********************************************************************************/
 
-package org.openmuc.jeebus.spine;
+package org.openmuc.jeebus.spine.impl;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.ThrowingSupplier;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.RequestResult;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.xsd.v1.FeatureAddressType;
-import org.openmuc.jeebus.spine.xsd.v1.FeatureTypeEnumType;
 import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingDataType;
-import org.openmuc.jeebus.spine.xsd.v1.RoleType;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
+import static org.openmuc.jeebus.spine.xsd.v1.FeatureTypeEnumType.GENERIC;
+import static org.openmuc.jeebus.spine.xsd.v1.RoleType.CLIENT;
+import static org.openmuc.jeebus.spine.xsd.v1.RoleType.SERVER;
 
+@Execution(SAME_THREAD)
+@Isolated
 public class BindingTest {
     private Device client;
     private Device server;
@@ -37,24 +43,27 @@ public class BindingTest {
             getGenericDeviceBuilder(
                 REMOTE_COMM,
                 REMOTE_DEVICE_ADDRESS
-            ), RoleType.SERVER
-        ).build();
+            ),
+            SERVER
+        ).withDiscoverDevices(false).build();
         client = addFeature(
             getGenericDeviceBuilder(
                 LOCAL_COMM,
                 LOCAL_DEVICE_ADDRESS
-            ).withDiscoverDevices(true),
-            RoleType.CLIENT
-        ).build();
+            ),
+            CLIENT
+        ).withDiscoverDevices(false).build();
     }
 
     @Test
+    @Timeout(value = 5, unit = SECONDS)
     void testBindingCreation() throws SpineException, ExecutionException,
         InterruptedException {
-        CompletableFuture<RequestResult> bindingRequest = client
+
+        client
             .getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
-        Assertions.assertDoesNotThrow((ThrowingSupplier<RequestResult>) bindingRequest::get);
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC);
+
         assertDeviceRegisteredBinding(client, server, true);
         assertDeviceRegisteredBinding(server, client, true);
     }
@@ -63,21 +72,21 @@ public class BindingTest {
         Device requestingDevice,
         Device deviceUnderTest,
         boolean compare
-    )
-        throws ExecutionException, InterruptedException {
+    ) throws ExecutionException, InterruptedException {
+
         CompletableFuture<RequestResult> bindingReadRequest = requestingDevice
             .getNodeManagement()
             .requestBindingData(deviceUnderTest.getAddress().getDevice());
+
         NodeManagementBindingDataType bindingData = bindingReadRequest
             .get()
             .getCmd()
             .getNodeManagementBindingData();
-        if (compare) {
-            Assertions.assertTrue(containsBinding(bindingData));
-        }
-        else {
-            Assertions.assertFalse(containsBinding(bindingData));
-        }
+
+        assertThat(
+            containsBinding(bindingData),
+            is(compare)
+        );
     }
 
     private boolean containsBinding(NodeManagementBindingDataType bindingData) {
@@ -110,7 +119,7 @@ public class BindingTest {
         InterruptedException {
         client
             .getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC);
 
         client
             .getFeature(CLIENT_FEATURE_ADDRESS)
@@ -120,7 +129,7 @@ public class BindingTest {
 
         client
             .getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC);
         server
             .getFeature(SERVER_FEATURE_ADDRESS)
             .releaseBoundClient(CLIENT_FEATURE_ADDRESS);
@@ -133,7 +142,7 @@ public class BindingTest {
         ExecutionException, InterruptedException {
         client
             .getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC);
         server.getEntity(1).deleteFeature(0);
         assertDeviceRegisteredBinding(server, client, false);
         assertDeviceRegisteredBinding(client, server, false);
@@ -144,9 +153,38 @@ public class BindingTest {
         ExecutionException, InterruptedException {
         client
             .getFeature(CLIENT_FEATURE_ADDRESS)
-            .requestBind(SERVER_FEATURE_ADDRESS, FeatureTypeEnumType.GENERIC);
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC)
+            .join();
+
         client.getEntity(1).deleteFeature(0);
+
         assertDeviceRegisteredBinding(server, client, false);
         assertDeviceRegisteredBinding(client, server, false);
+    }
+
+    @Test
+    void testBindingDeletionOnDisconnect() throws SpineException {
+        client
+            .getFeature(CLIENT_FEATURE_ADDRESS)
+            .requestBind(SERVER_FEATURE_ADDRESS, GENERIC)
+            .join();
+
+        FeatureImpl feature = (FeatureImpl) server
+            .getFeature(SERVER_FEATURE_ADDRESS);
+
+        assertThat(
+            feature.getBound(CLIENT_FEATURE_ADDRESS),
+            is(true)
+        );
+
+        client
+            .getDevice()
+            .getConnectionHandler()
+            .closeConnection(REMOTE_COMM_ADDRESS);
+
+        assertThat(
+            feature.getBound(CLIENT_FEATURE_ADDRESS),
+            is(false)
+        );
     }
 }

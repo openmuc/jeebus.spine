@@ -14,6 +14,7 @@ import org.openmuc.jeebus.ship.api.DisconnectReason;
 import org.openmuc.jeebus.ship.api.ShipConnectionInterface;
 import org.openmuc.jeebus.spine.impl.DeviceBuilder;
 import org.openmuc.jeebus.spine.spi.DeviceListener;
+import org.openmuc.jeebus.spine.spi.SpineConnection;
 import org.openmuc.jeebus.spine.spi.SpineSubscription;
 import org.openmuc.jeebus.spine.spi.UseCaseListener;
 
@@ -167,7 +168,9 @@ public interface NodeManagement extends Feature, FeatureWrapper {
      * @return a <code>CompletableFuture</code> which is completed with the answer
      */
     CompletableFuture<RequestResult> subscribeDestinationListData(
-        String deviceId, SpineSubscription subscription, boolean notifyFullRead
+        String deviceId,
+        SpineSubscription subscription,
+        boolean notifyFullRead
     );
 
     /**
@@ -208,8 +211,15 @@ public interface NodeManagement extends Feature, FeatureWrapper {
      */
     void removeAddressMapping(String communicationAddress);
 
+    @Deprecated(since = "4.1.0", forRemoval = true)
     void notifyDisconnect(
         DisconnectReason disconnectReason,
         ShipConnectionInterface shipConnectionInterface
     );
+
+    /**
+     * Notifies the NodeManagement of the disconnection to the remote SPINE device.
+     * @param deviceAddress the SPINE device address of the remote device
+     */
+    void notifyDisconnect(String deviceAddress);
 }

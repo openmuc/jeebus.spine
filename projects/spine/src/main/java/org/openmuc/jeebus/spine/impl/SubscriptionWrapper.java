@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import static org.openmuc.jeebus.spine.utils.SpineUtilities.addressToString;
+
 class SubscriptionWrapper {
     private static final Logger LOG = LoggerFactory.getLogger(
         MethodHandles.lookup().lookupClass()
@@ -55,7 +57,7 @@ class SubscriptionWrapper {
                     = (SpineException) throwable.getCause();
                 switch (spineException.getError()) {
                     case TIMEOUT: {
-                        this.state = State.TIMEOUT;
+                        this.state = State.TIMEDOUT;
                         break;
                     }
                     case COMMAND_REJECTED: {
@@ -72,25 +74,26 @@ class SubscriptionWrapper {
                 this.state = State.UNSUCCESSFUL;
             }
             LOG.error(
-                "There was an exception completing subscription request {}",
+                "There was an exception completing subscription request: {}",
                 this,
                 throwable
             );
         }
         else {
             this.state = State.SUCCESSFUL;
-            LOG.debug("Subscription request completed successfully {}", this);
+            LOG.debug("Subscription request completed: {}", this);
         }
     }
 
     @Override
     public String toString() {
-        return "SubscriptionWrapper{" +
-            "state=" + state +
-            ", subscriptions=" + subscriptions +
-            ", remoteServerAddress=" + remoteServerAddress +
-            ", featureType=" + featureType +
-            '}';
+        return subscriptions.size()
+            +" subscriptions to "
+            +featureType
+            +" at "
+            +addressToString(remoteServerAddress)
+            +" are "
+            +state;
     }
 
     State getState() {
@@ -133,6 +136,6 @@ class SubscriptionWrapper {
         SUCCESSFUL,
         UNSUCCESSFUL,
         REJECTED,
-        TIMEOUT
+        TIMEDOUT
     }
 }

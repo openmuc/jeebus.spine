@@ -14,6 +14,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
 import org.openmuc.jeebus.spine.spi.AssertingDeviceListener;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
@@ -23,8 +24,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
+@Execution(SAME_THREAD)
 class NodeManagementTest {
 
     private static final String DEVICE_DESCRIPTION = "JUnit Test Device";
@@ -564,19 +567,22 @@ class NodeManagementTest {
             getGenericDeviceBuilder(LOCAL_COMM, LOCAL_DEVICE_ADDRESS),
             RoleType.CLIENT
         ).withDiscoverDevices(true).build();
+
         AtomicBoolean gotNotification = new AtomicBoolean(false);
+
         client.getNodeManagement()
             .getNodeManagementSubscriptionRequest(
                 REMOTE_COMM_ADDRESS,
                 REMOTE_DEVICE_ADDRESS,
                 notification -> {
                     assertEntityRemoved(notification
-                            .getCmd()
-                            .getNodeManagementDetailedDiscoveryData()
+                        .getCmd()
+                        .getNodeManagementDetailedDiscoveryData()
                     );
                     gotNotification.set(true);
                 }
             ).get();
+
         server.deleteEntity(1);
         Awaitility.await().atMost(5, TimeUnit.SECONDS).until(gotNotification::get);
     }

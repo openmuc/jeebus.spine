@@ -15,8 +15,13 @@ import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
+import org.openmuc.jeebus.spine.xsd.v1.NodeManagementBindingRequestCallType.BindingRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
+
+import static org.openmuc.jeebus.spine.xsd.v1.FunctionEnumType.NODE_MANAGEMENT_BINDING_REQUEST_CALL;
 
 class BindingRequestFunction extends FeatureFunction {
     private static final Logger LOGGER = LoggerFactory.getLogger(
@@ -24,7 +29,7 @@ class BindingRequestFunction extends FeatureFunction {
     private final BindingDataFunction bindingDataFunction;
 
     BindingRequestFunction(BindingDataFunction bindingDataFunction) {
-        super(FunctionEnumType.NODE_MANAGEMENT_BINDING_REQUEST_CALL.value());
+        super(NODE_MANAGEMENT_BINDING_REQUEST_CALL.value());
         this.bindingDataFunction = bindingDataFunction;
         setCallable(true);
     }
@@ -40,8 +45,11 @@ class BindingRequestFunction extends FeatureFunction {
     }
 
     @Override
-    public SpineAcknowledgment call(CmdType cmd, FeatureAddressType sourceAddress) {
-        NodeManagementBindingRequestCallType.BindingRequest bindingRequest = cmd
+    public SpineAcknowledgment call(
+        CmdType cmd,
+        FeatureAddressType sourceAddress
+    ) {
+        BindingRequest bindingRequest = cmd
             .getNodeManagementBindingRequestCall()
             .getBindingRequest();
         FeatureImpl feature;
@@ -53,8 +61,10 @@ class BindingRequestFunction extends FeatureFunction {
         catch (SpineException e) {
             return e.getAcknowledgment();
         }
-        if (feature.getType().value().equals(bindingRequest.getServerFeatureType())
-            && feature.bind(bindingRequest)
+        if (Objects.equals(
+            feature.getType().value(),
+            bindingRequest.getServerFeatureType()
+        ) && feature.bind(bindingRequest)
         ) {
             bindingDataFunction.addBinding(bindingRequest);
             return new SpineAcknowledgment(Error.NO_ERROR);
