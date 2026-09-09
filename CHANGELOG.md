@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.1.1] - 2026-09-09
+
+### Changed
+
+- update jEEBus.SHIP dependency to 3.0.1
+
 ## [4.1.0] - 2026-09-09
 
 ### Added
