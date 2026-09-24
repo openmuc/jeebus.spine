@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmuc.jeebus.spine.spi.AssertingDeviceListener;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
 import org.openmuc.jeebus.spine.xsd.v1.*;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
 @Execution(SAME_THREAD)
+@ResourceLock(SHARED_FIXTURE_LOCK)
 class NodeManagementTest {
 
     private static final String DEVICE_DESCRIPTION = "JUnit Test Device";

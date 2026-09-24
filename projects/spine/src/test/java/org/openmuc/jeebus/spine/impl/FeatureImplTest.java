@@ -11,6 +11,7 @@
 package org.openmuc.jeebus.spine.impl;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmuc.jeebus.spine.TestUtilities;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.Entity;
@@ -29,6 +30,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.openmuc.jeebus.spine.xsd.v1.CmdClassifierType.*;
 
+@ResourceLock(TestUtilities.SHARED_FIXTURE_LOCK)
 class FeatureImplTest {
 
     @Test

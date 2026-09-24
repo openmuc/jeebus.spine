@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.api;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 
 import java.util.Map;
@@ -47,7 +48,7 @@ public class UseCasePartner {
      * @return the remote address of the Feature with the given type or null if there
      * is no such Feature.
      */
-    public FeatureAddressType getCompleteFeatureAddress(FeatureTypeEnumType type) {
+    public @Nullable FeatureAddressType getCompleteFeatureAddress(FeatureTypeEnumType type) {
         return featureInfos.containsKey(type)
             ? new FeatureAddressType()
             .withDevice(deviceInfo.getDescription().getDeviceAddress().getDevice())
@@ -100,7 +101,7 @@ public class UseCasePartner {
      *
      * @return the use case information of the remote entity supporting the use case.
      */
-    public NodeManagementUseCaseDataType.UseCaseInformation getUseCaseInfo() {
+    public NodeManagementUseCaseDataType.@Nullable UseCaseInformation getUseCaseInfo() {
         return useCaseInfo;
     }
 

@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Feature;
 import org.openmuc.jeebus.spine.utils.Filters;
 import org.openmuc.jeebus.spine.xsd.v1.CmdControlType;
@@ -44,7 +45,7 @@ public class ListFeatureFunctionNotifier<DATA, DATA_LIST, SELECTOR, ELEMENTS> {
         = "Feature was not added to entity yet. Skipping notify.";
     private final ReadListFeatureFunction<DATA, DATA_LIST, SELECTOR, ELEMENTS, ?>
         parent;
-    private Feature feature;
+    private @Nullable Feature feature;
     private final DataListHolder<DATA, SELECTOR> dataListHolder;
     private final ListFeatureFunctionTypeInfo<DATA, DATA_LIST, SELECTOR, ELEMENTS>
         typeInfo;

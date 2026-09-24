@@ -10,13 +10,14 @@
 
 package org.openmuc.jeebus.spine.api;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.xsd.v1.*;
 
 public class SpineAcknowledgment {
     private final Error error;
-    private final String description;
+    private final @Nullable String description;
 
-    public SpineAcknowledgment(Error error, String description) {
+    public SpineAcknowledgment(Error error, @Nullable String description) {
         this.error = error;
         this.description = description;
     }
