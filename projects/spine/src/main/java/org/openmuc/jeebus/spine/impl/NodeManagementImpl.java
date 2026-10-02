@@ -886,6 +886,8 @@ class NodeManagementImpl extends FeatureImpl implements NodeManagement {
     public void shutdown() {
         super.shutdown();
         discoveryExecutor.shutdownNow();
+        discoveryMap.values().forEach(future -> future.cancel(true));
+        discoveryMap.clear();
     }
 
     public static class MetaInformation implements KnownFeatureInformation {
