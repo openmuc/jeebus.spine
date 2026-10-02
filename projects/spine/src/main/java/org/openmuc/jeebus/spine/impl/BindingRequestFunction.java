@@ -61,16 +61,27 @@ class BindingRequestFunction extends FeatureFunction {
         catch (SpineException e) {
             return e.getAcknowledgment();
         }
-        if (Objects.equals(
-            feature.getType().value(),
-            bindingRequest.getServerFeatureType()
-        ) && feature.bind(bindingRequest)
-        ) {
+        if (
+            // ServerFeatureTypes are optional according to SPINE:7.3.2
+            bindingRequest.getServerFeatureType() != null
+            && !Objects.equals(
+                feature.getType().value(),
+                bindingRequest.getServerFeatureType()
+        )) {
+            LOGGER.warn(
+                "ServerFeatureType mismatch: {} expects {} but is {}",
+                sourceAddress.getDevice(),
+                bindingRequest.getServerFeatureType(),
+                feature.getType().value()
+            );
+        }
+
+        if (feature.bind(bindingRequest)) {
             bindingDataFunction.addBinding(bindingRequest);
             return new SpineAcknowledgment(Error.NO_ERROR);
         }
         else {
-            LOGGER.debug(
+            LOGGER.warn(
                 "Binding from device {} denied",
                 bindingRequest.getClientAddress().getDevice()
             );

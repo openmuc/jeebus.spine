@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.1] - 
+
+### Fixed
+
+- stop reqiring the `ServerFeatureType` field at Binding or Subscription request
+  calls as these are optional according to the specification
+- properly shut down `Executors` and `Futures` to resolve resource leaks
+
 ## [4.2.0] - 2026-09-21
 
 ### Added

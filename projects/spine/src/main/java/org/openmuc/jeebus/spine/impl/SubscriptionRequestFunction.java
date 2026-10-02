@@ -58,28 +58,35 @@ class SubscriptionRequestFunction extends FeatureFunction {
             return e.getAcknowledgment();
         }
 
-        String reason
-            = "Subscription request denied due to wrong feature type in request";
-        if (Objects.equals(
-            feature.getType().value(),
-            subscriptionRequest.getServerFeatureType()
+        if (
+            // ServerFeatureTypes are optional according to SPINE:7.4.2
+            subscriptionRequest.getServerFeatureType() != null
+            && !Objects.equals(
+                feature.getType().value(),
+                subscriptionRequest.getServerFeatureType()
         )) {
-            if (feature.subscribe(subscriptionRequest)) {
-                subscriptionDataFunction.addSubscriptionEntry(subscriptionRequest);
-                return new SpineAcknowledgment(Error.NO_ERROR);
-            }
-            else {
-                reason = "Subscription request denied";
-            }
+            LOGGER.warn(
+                "ServerFeatureType mismatch: {} expects {} but is {}",
+                sourceAddress.getDevice(),
+                subscriptionRequest.getServerFeatureType(),
+                feature.getType().value()
+            );
         }
-        LOGGER.debug(
-            "Subscription from device {} denied",
-            subscriptionRequest.getClientAddress().getDevice()
-        );
-        return new SpineAcknowledgment(
-            Error.COMMAND_REJECTED,
-            reason
-        );
+
+        if (feature.subscribe(subscriptionRequest)) {
+            subscriptionDataFunction.addSubscriptionEntry(subscriptionRequest);
+            return new SpineAcknowledgment(Error.NO_ERROR);
+        }
+        else {
+            LOGGER.warn(
+                "Subscription from device {} denied",
+                subscriptionRequest.getClientAddress().getDevice()
+            );
+            return new SpineAcknowledgment(
+                Error.COMMAND_REJECTED,
+                "Subscription request denied"
+            );
+        }
     }
 
     @Override
