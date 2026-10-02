@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Shutdownable;
 import org.openmuc.jeebus.spine.api.Feature;
 import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
@@ -21,7 +22,7 @@ import java.util.Objects;
 public abstract class FeatureFunction implements Shutdownable {
     private final FunctionPropertyType functionProperty;
     private final String functionName;
-    protected Feature feature;
+    protected @Nullable Feature feature;
     private boolean writable;
     private boolean requireBinding;
     private boolean readable;

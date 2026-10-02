@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.api.options.WriteListCmdOption;
@@ -133,7 +134,7 @@ public class DataListHolder<DATA, SELECTOR> {
      *     the condition
      * @return copy of the first found data, null if none is found
      */
-    public synchronized DATA getDataCopyForFirst(Predicate<DATA> predicate) {
+    public synchronized @Nullable DATA getDataCopyForFirst(Predicate<DATA> predicate) {
         DATA data = dataList.stream()
             .filter(predicate)
             .findFirst()

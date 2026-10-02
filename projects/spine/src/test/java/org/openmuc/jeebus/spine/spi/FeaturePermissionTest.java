@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.RequestResult;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.openmuc.jeebus.spine.TestUtilities.*;
 
 @Execution(SAME_THREAD)
+@ResourceLock(SHARED_FIXTURE_LOCK)
 class FeaturePermissionTest {
 
     @BeforeEach

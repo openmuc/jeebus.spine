@@ -16,6 +16,13 @@ plugins {
 dependencies {
     xjcPlugins("org.jvnet.jaxb:jaxb-plugins:4.0.6")
 
+    // https://mvnrepository.com/artifact/org.eclipse.jdt/org.eclipse.jdt.annotation
+    /* Null type annotations for the public API. They are compile-only: the annotations are
+     * retained in the class files (RetentionPolicy.CLASS) so that downstream null analysis
+     * (e.g. the Eclipse compiler used by openHAB) can read them, but nothing is needed at
+     * runtime. Must stay in sync with the @NonNullByDefault package-info files. */
+    compileOnly 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.4.100'
+
     testImplementation project(':spine-test-utilities')
 }
 

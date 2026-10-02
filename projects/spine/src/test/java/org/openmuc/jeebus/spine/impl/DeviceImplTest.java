@@ -11,6 +11,7 @@
 package org.openmuc.jeebus.spine.impl;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmuc.jeebus.spine.TestUtilities;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.api.Entity;
@@ -21,6 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.openmuc.jeebus.spine.TestUtilities.entityIndex;
 
+@ResourceLock(TestUtilities.SHARED_FIXTURE_LOCK)
 public class DeviceImplTest {
     @Test
     public void deleteEntityDoesntBreakAddresses() throws SpineException {
