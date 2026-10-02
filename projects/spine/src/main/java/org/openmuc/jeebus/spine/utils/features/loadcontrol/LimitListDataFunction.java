@@ -251,6 +251,6 @@ public class LimitListDataFunction extends LoadControlFeatureFunction<
     @Override
     public void close() {
         super.close();
-        executor.shutdown();
+        executor.shutdownNow();
     }
 }
