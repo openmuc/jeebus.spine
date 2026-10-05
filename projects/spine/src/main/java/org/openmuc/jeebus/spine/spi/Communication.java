@@ -11,6 +11,7 @@
 package org.openmuc.jeebus.spine.spi;
 
 import org.openmuc.jeebus.spine.api.Device;
+import org.openmuc.jeebus.spine.api.NodeManagement;
 import org.openmuc.jeebus.spine.xsd.v1.DatagramType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,10 +112,13 @@ public abstract class Communication {
 
         device.getConnectionHandler().removeAddressMapping(communicationAddress);
 
-        device
-            .getNodeManagement()
-            .notifyDisconnect(deviceAddress);
-
-        device.getNodeManagement().removeAddressMapping(communicationAddress);
+        // NodeManagement is gone if the local device was already shut down (e.g. the connection is
+        // closed as part of the shutdown) - nothing left to notify or clean up then.
+        NodeManagement nodeManagement = device.getNodeManagement();
+        if (nodeManagement == null) {
+            return;
+        }
+        nodeManagement.notifyDisconnect(deviceAddress);
+        nodeManagement.removeAddressMapping(communicationAddress);
     }
 }
