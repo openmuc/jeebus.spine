@@ -11,7 +11,7 @@
 package org.openmuc.jeebus.spine.demo;
 
 import org.openmuc.jeebus.ship.api.cert.KeyStoreCertificateStorage;
-import org.openmuc.jeebus.ship.node.ShipConfig;
+import org.openmuc.jeebus.ship.api.ShipConfig;
 import org.openmuc.jeebus.shipspine.ShipCommunication;
 import org.openmuc.jeebus.spine.api.Device;
 import org.openmuc.jeebus.spine.xsd.v1.DeviceTypeEnumType;
