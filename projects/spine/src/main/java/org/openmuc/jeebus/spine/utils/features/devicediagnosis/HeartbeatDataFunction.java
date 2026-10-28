@@ -23,6 +23,7 @@ import javax.xml.datatype.Duration;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -46,6 +47,7 @@ public class HeartbeatDataFunction extends FeatureFunction {
     private ScheduledFuture<?> currentFuture;
 
     public static final long DEFAULT_TIMEOUT_SECONDS = 60;
+    private static final long SHUTDOWN_WAIT_SECONDS = 5;
 
     public HeartbeatDataFunction() {
         super(FunctionEnumType.DEVICE_DIAGNOSIS_HEARTBEAT_DATA.value());
@@ -85,12 +87,19 @@ public class HeartbeatDataFunction extends FeatureFunction {
     }
 
     private void resetHeartbeat() {
+        if (executorService.isShutdown()) return;
         if (currentFuture != null && !currentFuture.isDone()) currentFuture.cancel(false);
-        currentFuture = executorService.schedule(
-                this::increaseCounterAndNotifySubscribers,
-                timeoutSeconds,
-                TimeUnit.SECONDS
-        );
+        try {
+            currentFuture = executorService.schedule(
+                    this::increaseCounterAndNotifySubscribers,
+                    timeoutSeconds,
+                    TimeUnit.SECONDS
+            );
+        }
+        catch (RejectedExecutionException e) {
+            // executor was shut down concurrently (close()) - nothing left to schedule
+            log.debug("Heartbeat not rescheduled: executor is shut down");
+        }
     }
 
     public void increaseCounterAndNotifySubscribers() {
@@ -108,22 +117,22 @@ public class HeartbeatDataFunction extends FeatureFunction {
         }
     }
 
+    /**
+     * Stops the heartbeat instantly. A graceful {@code shutdown()} would keep the already scheduled
+     * (delayed) heartbeat task alive, because a ScheduledThreadPoolExecutor by default still runs
+     * delayed tasks after shutdown - so waiting for termination blocked for up to one heartbeat
+     * period (about 60 s). The pending task is therefore cancelled and the executor is shut down
+     * with {@code shutdownNow()}; only a currently running notification is waited for, briefly.
+     */
     public void shutdownExecutor() {
-        executorService.shutdown(); // Disable new tasks from being submitted
+        ScheduledFuture<?> future = currentFuture;
+        if (future != null) {
+            future.cancel(false);
+        }
+        executorService.shutdownNow();
         try {
-            // Wait a while for existing tasks to terminate
-            if (!executorService.awaitTermination(
-                timeoutSeconds,
-                TimeUnit.SECONDS
-            )) {
-                executorService.shutdownNow(); // Cancel currently executing tasks
-                // Wait a while for tasks to respond to being cancelled
-                if (!executorService.awaitTermination(
-                    timeoutSeconds,
-                    TimeUnit.SECONDS
-                )) {
-                    log.error("Pool did not terminate");
-                }
+            if (!executorService.awaitTermination(SHUTDOWN_WAIT_SECONDS, TimeUnit.SECONDS)) {
+                log.error("Pool did not terminate");
             }
         }
         catch (InterruptedException ie) {
