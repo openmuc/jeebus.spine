@@ -30,26 +30,28 @@ public class FakeCommunication extends Communication {
 
     @Override
     public void connect() {
-        if (discoveryEnabled) {
-            partner.addDevice(communicationAddress);
-            addDevice(partner.getCommunicationAddress());
-        }
+        if (partner != null) {
+            if (discoveryEnabled) {
+                partner.addDevice(communicationAddress);
+                addDevice(partner.getCommunicationAddress());
+            }
 
-        if (partner.getDevice() != null
-            && partner.getDevice().getConnectionHandler() != null
-            && this.getDevice() != null
-            && this.getDevice().getConnectionHandler() != null
-        ) {
-            this.getDevice().getConnectionHandler().addAddressMapping(
-                partner.getDevice().getAddress().getDevice(),
-                partner.getCommunicationAddress()
-            );
-            partner.getDevice().getConnectionHandler().addAddressMapping(
-                this.getDevice().getAddress().getDevice(),
-                this.getCommunicationAddress()
-            );
+            if (partner.getDevice() != null
+                && partner.getDevice().getConnectionHandler() != null
+                && this.getDevice() != null
+                && this.getDevice().getConnectionHandler() != null
+            ) {
+                this.getDevice().getConnectionHandler().addAddressMapping(
+                    partner.getDevice().getAddress().getDevice(),
+                    partner.getCommunicationAddress()
+                );
+                partner.getDevice().getConnectionHandler().addAddressMapping(
+                    this.getDevice().getAddress().getDevice(),
+                    this.getCommunicationAddress()
+                );
+            }
+            connected = true;
         }
-        connected = true;
     }
 
     @Override
