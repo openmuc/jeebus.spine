@@ -29,3 +29,7 @@ dependencies/
 
 # KDE folder settings
 .directory
+
+# IntelliJ
+out/
+
