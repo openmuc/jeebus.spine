@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Feature;
 import org.openmuc.jeebus.spine.api.FeatureWrapper;
 import org.openmuc.jeebus.spine.spi.function.FeatureFunction;
@@ -34,8 +35,10 @@ public interface KnownFeatureInformation {
 
     /**
      * The default FeaturePermission for this feature type
-     * @return default feature permission
+     * @return default feature permission, or null if this feature type has no
+     *     default permission
      */
+    @Nullable
     FeaturePermission defaultFeaturePermission();
 
     /**
@@ -66,6 +69,7 @@ public interface KnownFeatureInformation {
         }
 
         @Override
+        @Nullable
         public FeaturePermission defaultFeaturePermission() {
             return null;
         }

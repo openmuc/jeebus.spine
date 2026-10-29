@@ -32,6 +32,16 @@ public class TestUtilities {
     public static final String REMOTE_COMM_ADDRESS = "localhost:1235";
     public static final FeatureAddressType SERVER_FEATURE_ADDRESS
         = new FeatureAddressType(REMOTE_DEVICE_ADDRESS, new ArrayList<>(List.of(1L)), 0L);
+    /**
+     * Name of the {@link org.junit.jupiter.api.parallel.ResourceLock} that serializes all test classes sharing the
+     * static fixtures below. Those objects hold mutable per-test state - most importantly
+     * {@code Communication#device}, a single field that every test building a device overwrites - so two test
+     * classes using them concurrently make each other's requests be answered by the wrong device (for example with
+     * an empty NodeManagementUseCaseData). Every test class that touches any of these fixtures must either carry
+     * {@code @ResourceLock(SHARED_FIXTURE_LOCK)} or be {@code @Isolated}.
+     */
+    public static final String SHARED_FIXTURE_LOCK = "spine-shared-test-fixtures";
+
     public static final FakeCommunication LOCAL_COMM = new FakeCommunication(
         LOCAL_COMM_ADDRESS);
     public static final FakeCommunication REMOTE_COMM = new FakeCommunication(

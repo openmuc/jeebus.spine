@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.*;
 import org.openmuc.jeebus.spine.api.options.ReadListCmdOption;
@@ -82,7 +83,7 @@ public abstract class ReadListFeatureFunction<DATA, DATA_LIST, SELECTOR, ELEMENT
      *     if the validation fails
      */
     protected abstract void validateReadCmd(
-        List<SELECTOR> selectorList, ELEMENTS elements,
+        List<SELECTOR> selectorList, @Nullable ELEMENTS elements,
         ReadListCmdOption readListCmdOption
     )
         throws SpineException;
@@ -150,7 +151,7 @@ public abstract class ReadListFeatureFunction<DATA, DATA_LIST, SELECTOR, ELEMENT
      *     the condition
      * @return copy of the first found data, null if none is found
      */
-    public DATA getDataCopyForFirst(Predicate<DATA> predicate) {
+    public @Nullable DATA getDataCopyForFirst(Predicate<DATA> predicate) {
         return getDataListHolder().getDataCopyForFirst(predicate);
     }
 

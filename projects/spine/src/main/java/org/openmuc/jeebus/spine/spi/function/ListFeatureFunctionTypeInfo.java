@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.SpineException;
 import org.openmuc.jeebus.spine.api.options.WriteListCmdOption;
@@ -35,7 +36,7 @@ public class ListFeatureFunctionTypeInfo<DATA, DATA_LIST, SELECTOR, ELEMENTS>
 
     private final Class<DATA_LIST> dataListType;
     private final Class<SELECTOR> selectorType;
-    private final DataIdDescription<DATA> dataIdDesc;
+    private final @Nullable DataIdDescription<DATA> dataIdDesc;
 
     private final boolean isIdentifiableList;
 
@@ -349,6 +350,7 @@ public class ListFeatureFunctionTypeInfo<DATA, DATA_LIST, SELECTOR, ELEMENTS>
         return isIdentifiableList;
     }
 
+    @Nullable
     DataIdDescription<DATA> getDataIdDesc() {
         return dataIdDesc;
     }

@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.api;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.xsd.v1.EntityAddressType;
 
 import java.util.Collection;
@@ -50,6 +51,7 @@ public interface EntityParent {
     /**
      * @return the parent of this entity or <code>null</code> if this is a device
      */
+    @Nullable
     EntityParent getParent();
 
     /**

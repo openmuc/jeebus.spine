@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.api;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.spi.SpineConnection;
 
 import java.util.NoSuchElementException;
@@ -76,5 +77,13 @@ public interface ConnectionHandler {
      */
     void closeConnection(String address);
 
+    /**
+     * @param communicationAddress
+     *     the address used in the communication protocol, i.e. not the SPINE device
+     *     address.
+     * @return the SPINE device address mapped to the given communication address, or
+     *     <code>null</code> if no mapping is known
+     */
+    @Nullable
     String getDeviceAddress(String communicationAddress);
 }

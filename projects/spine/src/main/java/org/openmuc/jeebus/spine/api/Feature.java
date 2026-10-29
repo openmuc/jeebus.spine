@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.api;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.impl.EntityBuilder;
 import org.openmuc.jeebus.spine.impl.FeatureBuilder;
 import org.openmuc.jeebus.spine.spi.BindingListener;
@@ -98,6 +99,7 @@ public interface Feature {
      *     the function type to look for
      * @return the function of that type, if present
      */
+    @Nullable
     FeatureFunction getFunction(FunctionEnumType functionEnumType);
 
     /**
@@ -107,6 +109,7 @@ public interface Feature {
      *     the function name to look for
      * @return the function with that name, if present
      */
+    @Nullable
     FeatureFunction getFunction(String function);
 
     /**
@@ -122,6 +125,7 @@ public interface Feature {
      * @return A wrapper around this feature, if present.
      * @see #getFeatureWrapper(Class)
      */
+    @Nullable
     FeatureWrapper getFeatureWrapper();
 
     /**
@@ -137,7 +141,7 @@ public interface Feature {
      * @return A wrapper around this feature, if present.
      * @see #getFeatureWrapper(Class)
      */
-    <T extends FeatureWrapper> T getFeatureWrapper(Class<T> wrapperClass);
+    <T extends FeatureWrapper> @Nullable T getFeatureWrapper(Class<T> wrapperClass);
 
     /**
      * Shut down the feature, stopping any associated threads and releasing any other
@@ -268,7 +272,7 @@ public interface Feature {
      *     the filter with which a partial read on the feature returns the changed
      *     data
      */
-    void notifySubscribers(FunctionEnumType function, FilterType filter);
+    void notifySubscribers(FunctionEnumType function, @Nullable FilterType filter);
 
     /**
      * Notifies subscribers of this SPINE feature that data contained in the given

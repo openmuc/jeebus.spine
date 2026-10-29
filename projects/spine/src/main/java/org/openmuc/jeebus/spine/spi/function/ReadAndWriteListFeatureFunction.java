@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.*;
 import org.openmuc.jeebus.spine.api.options.WriteListCmdOption;
@@ -155,8 +156,8 @@ public abstract class ReadAndWriteListFeatureFunction<DATA, DATA_LIST, SELECTOR,
      *     if the validation fails
      */
     protected abstract void validateWriteCmdFull(
-        List<DATA> updateList, List<SELECTOR> selectorList,
-        ELEMENTS elements,
+        @Nullable List<DATA> updateList, List<SELECTOR> selectorList,
+        @Nullable ELEMENTS elements,
         WriteListCmdOption writeListCmdOption
     )
         throws SpineException;

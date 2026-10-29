@@ -10,20 +10,21 @@
 
 package org.openmuc.jeebus.spine.api;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.xsd.v1.CmdType;
 import org.openmuc.jeebus.spine.xsd.v1.ResultDataType;
 
 public class SpineException extends Exception {
     private final Error error;
-    private final String description;
+    private final @Nullable String description;
 
-    public SpineException(Error error, String message, Throwable cause) {
+    public SpineException(Error error, @Nullable String message, Throwable cause) {
         super(formatMessage(error, message), cause);
         this.description = message;
         this.error = error;
     }
 
-    public SpineException(Error error, String message) {
+    public SpineException(Error error, @Nullable String message) {
         super(formatMessage(error, message));
         this.description = message;
         this.error = error;
@@ -46,7 +47,7 @@ public class SpineException extends Exception {
         return error;
     }
 
-    private static String formatMessage(Error error, String message) {
+    private static String formatMessage(Error error, @Nullable String message) {
         return String.format(
             "Error Number %s (%s): %s",
             error.ordinal(),

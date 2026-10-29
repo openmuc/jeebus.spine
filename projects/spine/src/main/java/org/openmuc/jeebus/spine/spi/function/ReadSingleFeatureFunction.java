@@ -10,6 +10,7 @@
 
 package org.openmuc.jeebus.spine.spi.function;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.openmuc.jeebus.spine.api.DataValidationException;
 import org.openmuc.jeebus.spine.api.Error;
 import org.openmuc.jeebus.spine.api.SpineAcknowledgment;
@@ -33,7 +34,7 @@ import java.util.Set;
 public abstract class ReadSingleFeatureFunction<DATA, ELEMENTS, TYPE extends DataFeatureFunctionTypeInfo<DATA, ELEMENTS>>
     extends DataFeatureFunction<DATA, ELEMENTS, TYPE> {
 
-    protected DATA data;
+    protected @Nullable DATA data;
     protected final Object dataLock = new Object();
 
     protected final Set<ReadSingleCmdOption> allowedReadCmdOptions =
@@ -238,9 +239,9 @@ public abstract class ReadSingleFeatureFunction<DATA, ELEMENTS, TYPE extends Dat
     /**
      * Returns a data copy of the current data.
      *
-     * @return data copy
+     * @return data copy, or null if no data was set yet
      */
-    public DATA getDataCopy() {
+    public @Nullable DATA getDataCopy() {
         synchronized (dataLock) {
             if (data == null) {
                 return null;
